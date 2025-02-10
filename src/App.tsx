@@ -7,30 +7,30 @@ const client = generateClient<Schema>();
 
 function App() {
   const { signOut } = useAuthenticator();
-  const [todos, setTodos] = useState<Array<Schema['Todo']['type']>>([]);
+  const [quizzes, setQuizzes] = useState<Array<Schema['Quiz']['type']>>([]);
+
+  const generateQuiz = async () => {
+    
+    const resp = await client.mutations.quizGenerator({
+      description: "Write me a quiz about baseball",
+      numQuestions: 5,
+      knowledge: ""
+    })
+    console.log(resp)
+  }
 
   useEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
+    client.models.Quiz.observeQuery().subscribe({
+      next: (data) => setQuizzes([...data.items]),
     });
   }, []);
 
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt('Todo content') });
-  }
-
-  function deleteTodo(id: string) {
-    client.models.Todo.delete({ id });
-  }
   return (
     <main>
-      <h1>My todos</h1>
-      <button onClick={createTodo}>+ new</button>
+      <h1>My quizzes</h1>
       <ul>
-        {todos.map((todo) => (
-          <li onClick={() => deleteTodo(todo.id)} key={todo.id}>
-            {todo.content}
-          </li>
+        {quizzes.map((quiz) => (
+          <li key={quiz.id}>{quiz.description}</li>
         ))}
       </ul>
       <div>
@@ -40,6 +40,7 @@ function App() {
           Review next step of this tutorial.
         </a>
       </div>
+      <button onClick={generateQuiz}>Make A Quiz</button>
       <button onClick={signOut}>Sign out</button>
     </main>
   );
