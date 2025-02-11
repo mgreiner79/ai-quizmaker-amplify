@@ -43,7 +43,10 @@ const schema = a.schema({
       owner: a.string(),
     })
     .identifier(['id'])
-    .authorization((allow) => [allow.owner(), allow.publicApiKey().to(['read'])]),
+    .authorization((allow) => [
+      allow.owner(), 
+      allow.publicApiKey().to(['read'])
+    ]),
 
   QuizAttempt: a
     .model({

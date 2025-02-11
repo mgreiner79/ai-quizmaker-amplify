@@ -3,12 +3,12 @@ import { generateClient } from 'aws-amplify/data';
 import { v4 as uuidv4 } from 'uuid';
 import type { Schema } from '../../data/resource';
 import schema from './schema';
-import { env } from '$amplify/env/quiz-generator';
-import outputs from '../../../amplify_outputs.json';
 import { Amplify } from 'aws-amplify';
+import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
+import { env } from '$amplify/env/quiz-generator'
+const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
 
-Amplify.configure(outputs);
-
+Amplify.configure(resourceConfig, libraryOptions);
 
 const llmClient = new OpenAI({
   apiKey: env.OPENAI_API_KEY
@@ -20,7 +20,6 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
   // Parse the incoming request
   console.log(event)
   const { knowledge, description, numQuestions } = event.arguments;
-  const jwtToken = event.request.headers.authorization
 
   // Validation
   if (!description || !numQuestions) {
