@@ -8,6 +8,7 @@ const schema = a.schema({
       knowledge: a.string(),
       description: a.string().required(),
       numQuestions: a.integer().required(),
+      quizId: a.string()
     })
     .returns(a.ref('Quiz'))
     .handler(a.handler.function(quizGenerator))
@@ -47,6 +48,15 @@ const schema = a.schema({
       allow.owner(), 
       allow.publicApiKey().to(['read'])
     ]),
+
+  CreationProgress: a
+  .model({
+    correlationId: a.string(),
+    message: a.string(),
+  }).authorization((allow) => [
+    allow.owner(),
+    allow.publicApiKey().to(['read'])
+  ]),
 
   QuizAttempt: a
     .model({

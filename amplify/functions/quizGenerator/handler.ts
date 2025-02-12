@@ -1,7 +1,6 @@
 import { Amplify } from 'aws-amplify';
 import OpenAI from 'openai';
 import { generateClient } from 'aws-amplify/data';
-import { v4 as uuidv4 } from 'uuid';
 import { downloadData } from 'aws-amplify/storage';
 import schema from './schema';
 import type { Schema } from '../../data/resource';
@@ -16,20 +15,38 @@ const llmClient = new OpenAI({
   apiKey: env.OPENAI_API_KEY
 });
 
+
 export const handler: Schema['quizGenerator']['functionHandler'] = async (
   event,
 ) => {
   // Parse the incoming request
   console.log(event)
-  const { knowledge, description, numQuestions } = event.arguments;
-
+  const { quizId, knowledge, description, numQuestions } = event.arguments;
   // Validation
-  if (!description || !numQuestions) {
+  if (!description || !numQuestions || !quizId) {
     throw new Error('Missing required parameters');
   }
 
+  const token = event.request.headers.authorization
+  const client = generateClient<Schema>({
+    authToken: token
+  });
+
+  const publishProgress = async (message: string) => {
+    console.log(message);
+    const correlationId = quizId;
+    await client.models.CreationProgress.create({
+      correlationId,
+      message,
+    });
+  };
+
+  await publishProgress('Warming up');
+
+
   let knowledgeText = '';
   if (knowledge){
+    await publishProgress('Extracting knowledge');
     knowledgeText = await getKnowledgeText(knowledge)
   } else {  
     knowledgeText = ""
@@ -60,6 +77,8 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     Respond with valid JSON.
     `;
 
+  await publishProgress('Generating quiz');
+
   const chatCompletion = await llmClient.chat.completions.create({
     messages: [{ role: 'system', content: prompt }],
     model: 'gpt-4o',
@@ -74,7 +93,7 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     chatCompletion.choices[0].message.content ?? '{}',
   );
 
-  const quizId = uuidv4();
+  
 
   // We need to know the user who triggered this function in order to set the 'owner' property
   // on the Quiz item.
@@ -86,10 +105,7 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     throw new Error("Could not determine the user who triggered this function. 'sub' not found in event.identity. This function must be triggered by a user.")
   }
   
-  const token = event.request.headers.authorization
-  const client = generateClient<Schema>({
-    authToken: token
-  });
+  
   
   const newQuiz = await client.models.Quiz.create({
     title: parsedQuiz.title,
@@ -104,16 +120,16 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
   });
 
   console.log("Finished creating quiz")
+  await publishProgress('Quiz generation complete');
 
-  const quiz = await client.models.Quiz.get({ id: quizId });
-  console.log(quiz)
-
-  if (!quiz['data']) {
-    throw Error;
+  if (newQuiz.errors) {
+    throw new Error("Quiz creation failed.");
   }
 
-  return quiz['data'];
+  return newQuiz.data;
+  
 };
+
 
 const getKnowledgeText = async (knowledge: string) => {
   
