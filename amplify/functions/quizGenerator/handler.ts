@@ -1,11 +1,13 @@
+import { Amplify } from 'aws-amplify';
 import OpenAI from 'openai';
 import { generateClient } from 'aws-amplify/data';
 import { v4 as uuidv4 } from 'uuid';
-import type { Schema } from '../../data/resource';
+import { downloadData } from 'aws-amplify/storage';
 import schema from './schema';
-import { Amplify } from 'aws-amplify';
+import type { Schema } from '../../data/resource';
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
 import { env } from '$amplify/env/quiz-generator'
+
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
 
 Amplify.configure(resourceConfig, libraryOptions);
@@ -26,11 +28,17 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     throw new Error('Missing required parameters');
   }
 
+  let knowledgeText = '';
+  if (knowledge){
+    knowledgeText = await getKnowledgeText(knowledge)
+  } else {  
+    knowledgeText = ""
+  }
 
   // Construct the prompt for OpenAI
   const prompt = `
     You are a quiz generator. Given the following knowledge:
-    ${knowledge}
+    ${knowledgeText}
 
     Generate a quiz with the following description:
     ${description}
@@ -52,7 +60,6 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     Respond with valid JSON.
     `;
 
-  console.log(schema)
   const chatCompletion = await llmClient.chat.completions.create({
     messages: [{ role: 'system', content: prompt }],
     model: 'gpt-4o',
@@ -66,8 +73,6 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
   const parsedQuiz = JSON.parse(
     chatCompletion.choices[0].message.content ?? '{}',
   );
-
-  console.log(parsedQuiz)
 
   const quizId = uuidv4();
 
@@ -86,7 +91,7 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     authToken: token
   });
   
-  await client.models.Quiz.create({
+  const newQuiz = await client.models.Quiz.create({
     title: parsedQuiz.title,
     id: quizId,
     description: parsedQuiz.description,
@@ -100,7 +105,6 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
 
   console.log("Finished creating quiz")
 
-
   const quiz = await client.models.Quiz.get({ id: quizId });
   console.log(quiz)
 
@@ -110,3 +114,65 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
 
   return quiz['data'];
 };
+
+const getKnowledgeText = async (knowledge: string) => {
+  
+  let knowledgeText = "";
+  try {
+
+    // Retrieve the object from S3
+    const bucketName = process.env.BUCKET_NAME ?? ""
+    const bucketRegion = process.env.BUCKET_REGION ?? ""
+    console.log(bucketName)
+    const s3Response = await downloadData({
+      path: knowledge,
+      options: {
+        bucket: {
+          bucketName: bucketName,
+          region: bucketRegion
+        },
+      }
+    }).result;
+
+    // The Body is typically a Buffer
+    const fileBuffer = await s3Response.body.blob();
+    if (!fileBuffer) {
+      throw new Error('File content is empty');
+    }
+
+    // Use the file extension to determine how to extract text
+    const lowerKey = knowledge.toLowerCase();
+    if (lowerKey.endsWith('.pdf')) {
+      // Dynamically import pdf-parse for PDF text extraction
+      const { PdfReader } = await import('pdfreader');
+      const buffer = Buffer.from(await fileBuffer.arrayBuffer());
+      // Create a promise to accumulate text items extracted from the PDF
+      knowledgeText = await new Promise<string>((resolve, reject) => {
+        let text = "";
+        new PdfReader().parseBuffer(buffer, (err, item) => {
+          if (err) {
+            reject(err);
+          } else if (!item) {
+            // End of file reached
+            resolve(text);
+          } else if (item.text) {
+            // Append the text with a newline (adjust as needed)
+            text += item.text + "\n";
+          }
+        });
+      });
+    } else if (lowerKey.endsWith('.json')) {
+      // Parse and format JSON content
+      const jsonContent = JSON.parse(await fileBuffer.text());
+      console.log(jsonContent)
+      knowledgeText = JSON.stringify(jsonContent, null, 2);
+    } else {
+      // For .txt or any other file, assume plain text
+      knowledgeText = await fileBuffer.text();
+    }
+    return knowledgeText;
+  } catch (error) {
+    console.error('Error retrieving or processing knowledge file:', error);
+    throw new Error('Failed to retrieve or process knowledge file.');
+  }
+}

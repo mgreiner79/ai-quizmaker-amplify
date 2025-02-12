@@ -15,3 +15,5 @@ const backend = defineBackend({
 const stack = backend.createStack("CustomStack")
 
 new SecretsStack(stack, "SecretsStack")
+backend.quizGenerator.addEnvironment("BUCKET_NAME", backend.storage.resources.bucket.bucketName)
+backend.quizGenerator.addEnvironment("BUCKET_REGION", backend.storage.stack.region)

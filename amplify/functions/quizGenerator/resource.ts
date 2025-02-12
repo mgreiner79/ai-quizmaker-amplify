@@ -1,6 +1,5 @@
 import { defineFunction, secret } from '@aws-amplify/backend';
 
-
 export const quizGenerator = defineFunction({
   name: 'quiz-generator',
   entry: './handler.ts',
