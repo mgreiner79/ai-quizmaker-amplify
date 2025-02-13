@@ -7,5 +7,5 @@ export const quizGenerator = defineFunction({
   environment: {
     OPENAI_API_KEY:  secret('llm-api-token')
   },
-  resourceGroupName: 'data'
+  resourceGroupName: 'storage',
 });
