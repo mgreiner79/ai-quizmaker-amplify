@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -7,12 +7,12 @@ import {
   Typography,
   InputLabel,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
-import { uploadData } from "aws-amplify/storage";
+import { uploadData } from 'aws-amplify/storage';
 import QuizCreationProgress from '../components/QuizCreationProgress';
+import { useNavigate } from 'react-router-dom';
 
 const client = generateClient<Schema>();
 
@@ -22,8 +22,8 @@ const CreateQuiz: React.FC = () => {
   const [description, setDescription] = useState('');
   const [numQuestions, setNumQuestions] = useState<number>(5);
   const [knowledgeFile, setKnowledgeFile] = useState<File | null>(null);
-  const [progressMessages, setProgressMessages] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [progressStarted, setProgressStarted] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -49,10 +49,9 @@ const CreateQuiz: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     let knowledgeFileKey = '';
-    setSubmitted(true)
+    setSubmitted(true);
     try {
       if (knowledgeFile) {
-        // Upload the knowledge file to S3 (the bucket is defined in Amplify storage configuration)
         const arrayBuffer = await readFileAsArrayBuffer(knowledgeFile);
         const result = uploadData({
           data: arrayBuffer,
@@ -60,60 +59,95 @@ const CreateQuiz: React.FC = () => {
         });
         knowledgeFileKey = (await result.result).path;
       }
-
-      // Call the quiz generator mutation; note that the backend expects
-      // description, numQuestions, and knowledge (the file key or empty string)
-      const resp = await client.mutations.quizGenerator({
+      // Call the mutation and capture the returned quiz object.
+      await client.mutations.quizGenerator({
         quizId,
         description,
         numQuestions,
         knowledge: knowledgeFileKey,
       });
-      // Redirect to the edit page so the user can modify the auto-generated quiz.
-      navigate(`/edit/${resp.data?.id}`);
+
     } catch (error) {
-      setSubmitted(false)
+      setSubmitted(false);
       console.error('Error creating quiz:', error);
-    } 
+    }
   };
+
+  // Subscribe to the quiz creation event.
+  useEffect(() => {
+    if (!submitted) return;
+    const sub = client.models.Quiz.onCreate({
+      filter: {
+        id: { eq: quizId },
+      },
+    }).subscribe({
+      next: (event) => {
+        console.log('Quiz created event received:', event);
+        // Redirect once the quiz creation event is received.
+        navigate(`/edit/${quizId}`);
+      },
+      error: (error) => console.warn('Subscription error:', error),
+    });
+    return () => sub.unsubscribe();
+  }, [submitted, quizId, navigate]);
 
   return (
     <Container maxWidth="sm">
-      <Box mt={4}>
-        <Typography variant="h4" gutterBottom>
-          Create New Quiz
-        </Typography>
-        <form onSubmit={handleSubmit}>
-          <TextField
-            label="Quiz Description"
-            fullWidth
-            multiline
-            margin="normal"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
-          />
-          <TextField
-            label="Number of Questions"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={numQuestions}
-            onChange={(e) => setNumQuestions(parseInt(e.target.value))}
-            required
-          />
-          <Box mt={2}>
-            <InputLabel>Knowledge File (optional)</InputLabel>
-            <input type="file" accept=".pdf,.txt,.doc,.docx" onChange={handleFileChange} />
-          </Box>
-          <Box mt={4}>
-            <Button type="submit" variant="contained" color="primary" disabled={submitted}>
-              Create
-            </Button>
-            {submitted && <QuizCreationProgress quizId={quizId} />}
-          </Box>
-        </form>
-      </Box>
+      {(!submitted) && (
+        <Box mt={4}>
+          <Typography variant="h4" gutterBottom>
+            Create New Quiz
+          </Typography>
+          <form onSubmit={handleSubmit}>
+            <TextField
+              label="Quiz Description"
+              fullWidth
+              multiline
+              margin="normal"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+              disabled={submitted}
+            />
+            <TextField
+              label="Number of Questions"
+              type="number"
+              fullWidth
+              margin="normal"
+              value={numQuestions}
+              onChange={(e) => setNumQuestions(parseInt(e.target.value))}
+              required
+              disabled={submitted}
+            />
+            <Box mt={2}>
+              <InputLabel>Knowledge File (optional)</InputLabel>
+              <input
+                type="file"
+                accept=".pdf,.txt,.doc,.docx"
+                onChange={handleFileChange}
+                disabled={submitted}
+              />
+            </Box>
+            <Box mt={4}>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={submitted}
+              >
+                Create
+              </Button>
+            </Box>
+          </form>
+        </Box>
+      )}
+
+      {submitted && (
+        <QuizCreationProgress
+          quizId={quizId}
+          onProgressStart={() => setProgressStarted(true)}
+        />
+      )}
     </Container>
   );
 };

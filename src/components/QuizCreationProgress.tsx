@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Box, Typography } from '@mui/material';
+import Loader from './loaders/TetrominoLoader';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
@@ -11,35 +13,59 @@ interface QuizProgressEvent {
   createdAt: string;
 }
 
-interface QuizProgressProps {
+interface QuizCreationProgressProps {
   quizId: string;
+  onProgressStart?: () => void;
 }
 
-const QuizProgress: React.FC<QuizProgressProps> = ({ quizId }) => {
-  const [progressMessage, setProgressMessage] = useState<string>("");
+const QuizCreationProgress: React.FC<QuizCreationProgressProps> = ({
+  quizId,
+  onProgressStart,
+}) => {
+  const [progressMessage, setProgressMessage] = useState<string>('Warming up');
+  const hasNotified = useRef(false);
 
   useEffect(() => {
-    // Subscribe to new progress events for this quizId
     const sub = client.models.CreationProgress.onCreate({
       filter: {
         correlationId: { eq: quizId },
       },
     }).subscribe({
       next: (event) => {
-        // The event payload may be found on event.data (depending on your SDK version)
         const newMessage = (event as QuizProgressEvent).message;
+        // When the first progress message arrives, notify the parent.
+        if (!hasNotified.current && newMessage) {
+          hasNotified.current = true;
+          if (onProgressStart) onProgressStart();
+        }
         setProgressMessage(newMessage);
       },
       error: (error) => console.warn('Subscription error:', error),
     });
     return () => sub.unsubscribe();
-  }, [quizId]);
+  }, [quizId, onProgressStart]);
 
   return (
-    <div>
-        <p>{progressMessage}</p>
-    </div>
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="flex-start"
+      minHeight="100vh"
+      width="100%"
+      pt={4}
+      px={2}
+    >
+      {/* Progress message at the top */}
+      <Typography variant="h4" align="center">
+        {progressMessage}
+      </Typography>
+      {/* Loader positioned below the progress message */}
+      <Box mt={4}>
+        <Loader />
+      </Box>
+    </Box>
   );
 };
 
-export default QuizProgress;
+export default QuizCreationProgress;
