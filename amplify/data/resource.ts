@@ -67,7 +67,10 @@ const schema = a.schema({
       totalPossible: a.integer(),
       answers: a.string().array(),
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(), 
+      allow.publicApiKey().to(['create','update', 'read'])
+    ]),
 }).authorization((allow) => [allow.resource(quizGenerator).to(['query', 'mutate'])]);
 
 export type Schema = ClientSchema<typeof schema>;
