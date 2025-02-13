@@ -16,7 +16,6 @@ import type { Schema } from '../../amplify/data/resource';
 
 const client = generateClient<Schema>();
 
-
 type Phase = 'overview' | 'preview' | 'question' | 'explanation' | 'finished';
 
 const QuizAttempt: React.FC = () => {

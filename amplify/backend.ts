@@ -14,3 +14,7 @@ const backend = defineBackend({
 
 backend.quizGenerator.addEnvironment("BUCKET_NAME", backend.storage.resources.bucket.bucketName)
 backend.quizGenerator.addEnvironment("BUCKET_REGION", backend.storage.stack.region)
+
+
+const { cfnIdentityPool } = backend.auth.resources.cfnResources;
+cfnIdentityPool.allowUnauthenticatedIdentities = true;
