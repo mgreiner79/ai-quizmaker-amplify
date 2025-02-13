@@ -11,13 +11,24 @@
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.5.5",
-    "aws-amplify": "^6.6.6",
+    "@aws-amplify/ui-react-storage": "^3.7.2",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^6.4.2",
+    "@mui/material": "^6.4.4",
+    "aws-amplify": "^6.12.3",
+    "aws-sdk": "^2.1692.0",
+    "openai": "^4.82.0",
+    "pdfreader": "^3.0.7",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.1.5"
   },
   "devDependencies": {
-    "@aws-amplify/backend": "^1.5.0",
-    "@aws-amplify/backend-cli": "^1.2.9",
+    "@aws-amplify/backend": "^1.14.0",
+    "@aws-amplify/backend-cli": "^1.4.9",
+    "@aws-sdk/types": "^3.734.0",
+    "@types/pdf-parse": "^1.1.4",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
@@ -30,6 +41,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "sass-embedded": "^1.83.4",
     "tsx": "^4.7.2",
     "typescript": "^5.4.5",
     "vite": "^5.4.10"
