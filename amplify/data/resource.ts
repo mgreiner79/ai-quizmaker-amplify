@@ -56,7 +56,8 @@ const schema = a.schema({
     message: a.string(),
   }).authorization((allow) => [
     allow.owner(),
-    allow.publicApiKey().to(['read'])
+    allow.publicApiKey().to(['read']),
+    allow.guest().to(['read'])
   ]),
 
   QuizAttempt: a
