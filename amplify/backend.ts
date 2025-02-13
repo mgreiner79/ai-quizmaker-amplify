@@ -12,5 +12,5 @@ const backend = defineBackend({
 });
 
 
-backend.quizGenerator.addEnvironment("BUCKET_NAME", backend.storage.resources.bucket.bucketName)
-backend.quizGenerator.addEnvironment("BUCKET_REGION", backend.storage.stack.region)
+// backend.quizGenerator.addEnvironment("BUCKET_NAME", backend.storage.resources.bucket.bucketName)
+// backend.quizGenerator.addEnvironment("BUCKET_REGION", backend.storage.stack.region)
