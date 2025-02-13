@@ -7,10 +7,10 @@ import { quizGenerator } from './functions/quizGenerator/resource';
 const backend = defineBackend({
   auth,
   data,
-  // quizGenerator,
-  // storage,
+  quizGenerator,
+  storage,
 });
 
 
-// backend.quizGenerator.addEnvironment("BUCKET_NAME", backend.storage.resources.bucket.bucketName)
-// backend.quizGenerator.addEnvironment("BUCKET_REGION", backend.storage.stack.region)
+backend.quizGenerator.addEnvironment("BUCKET_NAME", backend.storage.resources.bucket.bucketName)
+backend.quizGenerator.addEnvironment("BUCKET_REGION", backend.storage.stack.region)
