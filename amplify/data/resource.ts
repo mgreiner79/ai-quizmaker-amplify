@@ -6,7 +6,7 @@ const schema = a.schema({
     .mutation()
     .arguments({
       knowledge: a.string(),
-      description: a.string().required(),
+      prompt: a.string().required(),
       numQuestions: a.integer().required(),
       quizId: a.string()
     })
@@ -34,6 +34,7 @@ const schema = a.schema({
   Quiz: a
     .model({
       title: a.string().required(),
+      prompt: a.string(),
       id: a.id().required(),
       description: a.string(),
       previewTime: a.integer(),

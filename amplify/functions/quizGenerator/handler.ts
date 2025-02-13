@@ -76,8 +76,8 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (event)
   console.log('Received event:', JSON.stringify(event));
 
   // Extract and validate required parameters.
-  const { quizId, knowledge, description, numQuestions } = event.arguments;
-  if (!quizId || !description || !numQuestions) {
+  const { quizId, knowledge, prompt, numQuestions } = event.arguments;
+  if (!quizId || !prompt || !numQuestions) {
     throw new Error('Missing required parameters: quizId, description, or numQuestions.');
   }
 
@@ -111,12 +111,12 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (event)
     }
 
     // Step 3: Build the prompt for OpenAI.
-    const prompt = `
+    const compiledPrompt = `
       You are a quiz generator. Given the following knowledge:
       ${knowledgeText}
 
       Generate a quiz with the following description:
-      ${description}
+      ${prompt}
 
       The quiz should have ${numQuestions} questions. Each question should include:
       - text: the question text
@@ -139,7 +139,7 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (event)
 
     // Step 4: Request quiz generation from OpenAI.
     const chatCompletion = await llmClient.chat.completions.create({
-      messages: [{ role: 'system', content: prompt }],
+      messages: [{ role: 'system', content: compiledPrompt }],
       model: 'gpt-4o',
       temperature: 0.2,
       response_format: {
@@ -170,6 +170,7 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (event)
       title: parsedQuiz.title,
       id: quizId,
       description: parsedQuiz.description,
+      prompt: prompt,
       previewTime: parsedQuiz.previewTime,
       answerTime: parsedQuiz.answerTime,
       questions: parsedQuiz.questions,

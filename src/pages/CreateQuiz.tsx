@@ -23,7 +23,6 @@ const CreateQuiz: React.FC = () => {
   const [numQuestions, setNumQuestions] = useState<number>(5);
   const [knowledgeFile, setKnowledgeFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [progressStarted, setProgressStarted] = useState(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -50,6 +49,7 @@ const CreateQuiz: React.FC = () => {
     event.preventDefault();
     let knowledgeFileKey = '';
     setSubmitted(true);
+    console.log('Creating quiz:', description, numQuestions, knowledgeFile);
     try {
       if (knowledgeFile) {
         const arrayBuffer = await readFileAsArrayBuffer(knowledgeFile);
@@ -62,7 +62,7 @@ const CreateQuiz: React.FC = () => {
       // Call the mutation and capture the returned quiz object.
       await client.mutations.quizGenerator({
         quizId,
-        description,
+        prompt: description,
         numQuestions,
         knowledge: knowledgeFileKey,
       });
@@ -145,7 +145,6 @@ const CreateQuiz: React.FC = () => {
       {submitted && (
         <QuizCreationProgress
           quizId={quizId}
-          onProgressStart={() => setProgressStarted(true)}
         />
       )}
     </Container>

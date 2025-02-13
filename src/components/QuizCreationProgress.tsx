@@ -20,7 +20,6 @@ interface QuizCreationProgressProps {
 
 const QuizCreationProgress: React.FC<QuizCreationProgressProps> = ({
   quizId,
-  onProgressStart,
 }) => {
   const [progressMessage, setProgressMessage] = useState<string>('Warming up');
   const hasNotified = useRef(false);
@@ -36,14 +35,13 @@ const QuizCreationProgress: React.FC<QuizCreationProgressProps> = ({
         // When the first progress message arrives, notify the parent.
         if (!hasNotified.current && newMessage) {
           hasNotified.current = true;
-          if (onProgressStart) onProgressStart();
         }
         setProgressMessage(newMessage);
       },
       error: (error) => console.warn('Subscription error:', error),
     });
     return () => sub.unsubscribe();
-  }, [quizId, onProgressStart]);
+  }, [quizId]);
 
   return (
     <Box
