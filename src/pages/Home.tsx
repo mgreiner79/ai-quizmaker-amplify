@@ -12,6 +12,7 @@ import {
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
 import { useNavigate } from 'react-router-dom';
 
@@ -54,6 +55,9 @@ const Home: React.FC = () => {
             key={quiz.id}
             secondaryAction={
               <>
+                <IconButton edge="end" aria-label="attempt" onClick={() => navigate(`/quiz/${quiz.id}`)}>
+                  <PlayArrowIcon />
+                </IconButton>
                 <IconButton edge="end" aria-label="edit" onClick={() => navigate(`/edit/${quiz.id}`)}>
                   <EditIcon />
                 </IconButton>

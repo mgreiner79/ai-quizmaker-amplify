@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import CreateQuiz from './pages/CreateQuiz';
 import EditQuiz from './pages/EditQuiz';
+import QuizAttempt from './pages/QuizAttempt';
 
 const App: React.FC = () => {
   return (
@@ -10,6 +11,7 @@ const App: React.FC = () => {
       <Route path="/" element={<Home />} />
       <Route path="/create" element={<CreateQuiz />} />
       <Route path="/edit/:quizId" element={<EditQuiz />} />
+      <Route path="/quiz/:quizId" element={<QuizAttempt />} />
       {/* Future routes (e.g. quiz play, quiz view, etc.) can be added here */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

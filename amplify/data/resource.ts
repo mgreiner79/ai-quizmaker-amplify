@@ -15,20 +15,20 @@ const schema = a.schema({
     .authorization((allow) => [allow.authenticated()]),
 
   Answer: a.customType({
-    id: a.string(),
-    text: a.string(),
-    message: a.string(),
+    id: a.string().required(),
+    text: a.string().required(),
+    message: a.string().required(),
   })
   ,
 
   Question: a.customType({
-    text: a.string(),
+    text: a.string().required(),
     previewTime: a.integer(),
     answerTime: a.integer(),
     maxPoints: a.integer(),
-    correctAnswerId: a.string(),
-    explanation: a.string(),
-    answers: a.ref('Answer').array(),
+    correctAnswerId: a.string().required(),
+    explanation: a.string().required(),
+    answers: a.ref('Answer').array().required(),
   }),
 
   Quiz: a
@@ -36,13 +36,13 @@ const schema = a.schema({
       title: a.string().required(),
       prompt: a.string(),
       id: a.id().required(),
-      description: a.string(),
-      previewTime: a.integer(),
-      answerTime: a.integer(),
-      maxPoints: a.integer(),
-      questions: a.ref('Question').array(),
+      description: a.string().required(),
+      previewTime: a.integer().required(),
+      answerTime: a.integer().required(),
+      maxPoints: a.integer().required(),
+      questions: a.ref('Question').array().required(),
       knowledgeFileKey: a.string(),
-      owner: a.string(),
+      owner: a.string().required(),
     })
     .identifier(['id'])
     .authorization((allow) => [
