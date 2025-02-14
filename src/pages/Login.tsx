@@ -11,6 +11,7 @@ import {
   Button,
 } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
+import { Navigate } from 'react-router-dom';
 
 const components = {
   Header() {
@@ -108,12 +109,8 @@ const LoginPage: React.FC = () => {
       }}
     >
       <Authenticator components={components} formFields={formFields}>
-        {({ signOut, user }) => (
-          <div style={{ textAlign: 'center' }}>
-            <h1>Welcome, {user?.username}</h1>
-            <p>You are now logged in!</p>
-            <button onClick={signOut}>Sign out</button>
-          </div>
+        {({ user }) => (
+          user ? <Navigate to="/" replace /> : <></>
         )}
       </Authenticator>
     </div>

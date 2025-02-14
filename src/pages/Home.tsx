@@ -51,23 +51,29 @@ const Home: React.FC = () => {
       </Box>
       <List>
         {quizzes.map((quiz) => (
-          <ListItem
-            key={quiz.id}
-            secondaryAction={
-              <>
-                <IconButton edge="end" aria-label="attempt" onClick={() => navigate(`/quiz/${quiz.id}`)}>
-                  <PlayArrowIcon />
-                </IconButton>
-                <IconButton edge="end" aria-label="edit" onClick={() => navigate(`/edit/${quiz.id}`)}>
-                  <EditIcon />
-                </IconButton>
-                <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(quiz.id)}>
-                  <DeleteIcon />
-                </IconButton>
-              </>
-            }
-          >
-            <ListItemText primary={quiz.title} secondary={quiz.description} />
+          <ListItem key={quiz.id} sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <ListItemText
+                primary={quiz.title}
+                secondary={quiz.description}
+                sx={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <IconButton aria-label="attempt" onClick={() => navigate(`/quiz/${quiz.id}`)}>
+                <PlayArrowIcon />
+              </IconButton>
+              <IconButton aria-label="edit" onClick={() => navigate(`/edit/${quiz.id}`)}>
+                <EditIcon />
+              </IconButton>
+              <IconButton aria-label="delete" onClick={() => handleDelete(quiz.id)}>
+                <DeleteIcon />
+              </IconButton>
+            </Box>
           </ListItem>
         ))}
       </List>
