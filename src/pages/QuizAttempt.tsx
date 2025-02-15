@@ -19,19 +19,23 @@ const client = generateClient<Schema>();
 type Phase = 'overview' | 'preview' | 'question' | 'explanation' | 'finished';
 
 const QuizAttempt: React.FC = () => {
-  const { quizId } = useParams<{ quizId: string }>();
-  const navigate = useNavigate();
+    const { quizId } = useParams<{ quizId: string }>();
+    const navigate = useNavigate();
 
-  const [quiz, setQuiz] = useState<Schema['Quiz']['type'] | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [phase, setPhase] = useState<Phase>('overview');
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [previewTimer, setPreviewTimer] = useState<number>(0);
-  const [answerTimer, setAnswerTimer] = useState<number>(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [score, setScore] = useState<number>(0);
-  const [userAnswers, setUserAnswers] = useState<string[]>([]);
-  const [attemptSubmitted, setAttemptSubmitted] = useState<boolean>(false);
+    const [quiz, setQuiz] = useState<Schema['Quiz']['type'] | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [phase, setPhase] = useState<Phase>('overview');
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+    const [previewTimer, setPreviewTimer] = useState<number>(0);
+    const [answerTimer, setAnswerTimer] = useState<number>(0);
+    const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+    const [score, setScore] = useState<number>(0);
+    const [userAnswers, setUserAnswers] = useState<string[]>([]);
+    const [attemptSubmitted, setAttemptSubmitted] = useState<boolean>(false);
+    const defaultPoints = 3000;
+    const defaultAnswerTime = 30;
+    const defaultPreviewTime = 10;
+    const nSteps = 5;
 
   // Refs for timer intervals (we clear them on phase changes/unmount)
   const previewIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -77,7 +81,7 @@ const QuizAttempt: React.FC = () => {
   const startQuiz = () => {
     if (quiz && quiz.questions && quiz.questions.length > 0 && currentQuestion) {
       setPhase('preview');
-      setPreviewTimer(currentQuestion.previewTime || 10);
+      setPreviewTimer(currentQuestion.previewTime || defaultPreviewTime);
     }
   };
 
@@ -90,7 +94,7 @@ const QuizAttempt: React.FC = () => {
             clearInterval(previewIntervalRef.current!);
             // Transition to the answer phase.
             setPhase('question');
-            setAnswerTimer(currentQuestion?.answerTime || 30);
+            setAnswerTimer(currentQuestion?.answerTime || defaultAnswerTime);
             return 0;
           }
           return prev - 1;
@@ -130,27 +134,29 @@ const QuizAttempt: React.FC = () => {
     if (phase !== 'question' || selectedAnswer) return;
     setSelectedAnswer(answerId);
     if (answerIntervalRef.current) clearInterval(answerIntervalRef.current);
-
+  
     // Calculate how long the user took to answer.
-    const answerDuration = currentQuestion?.answerTime || 30;
+    const answerDuration = currentQuestion?.answerTime || defaultAnswerTime;
     const timeTaken = answerDuration - answerTimer;
-
+  
     let pointsAwarded = 0;
     if (answerId === currentQuestion?.correctAnswerId) {
-      // Award points based on when the answer was selected.
-      // Divide the answerTime into three equal intervals.
-      if (timeTaken <= answerDuration / 3) {
-        pointsAwarded = currentQuestion?.maxPoints || 3000;
-      } else if (timeTaken <= (2 * answerDuration) / 3) {
-        pointsAwarded = Math.floor((currentQuestion?.maxPoints || quiz?.maxPoints || 3000) * 2 / 3);
-      } else {
-        pointsAwarded = Math.floor((currentQuestion?.maxPoints || 3000) / 3);
-      }
+
+      // Each step lasts:
+      const stepDuration = answerDuration / nSteps;
+      // Determine how many steps have passed.
+      const stepsPassed = Math.floor(timeTaken / stepDuration);
+      // Calculate points based on the number of steps passed.
+      const maxPoints = currentQuestion?.maxPoints || defaultPoints;
+      const deductionPerStep = maxPoints / nSteps;
+      pointsAwarded = Math.max(maxPoints - stepsPassed * deductionPerStep, 0);
     }
+  
     setScore((prev) => prev + pointsAwarded);
     setUserAnswers((prevAnswers) => [...prevAnswers, answerId]);
     setPhase('explanation');
   };
+  
 
   // When the user clicks "Next" after the explanation.
   const handleNextQuestion = () => {
@@ -170,7 +176,7 @@ const QuizAttempt: React.FC = () => {
   useEffect(() => {
     if (phase === 'finished' && quiz && !attemptSubmitted) {
       const totalPossible = quiz.questions.reduce(
-        (sum, q) => sum + ((q?.maxPoints) || 3000),
+        (sum, q) => sum + ((q?.maxPoints) || defaultPoints),
         0
       );
       const submitAttempt = async () => {
@@ -345,7 +351,7 @@ const QuizAttempt: React.FC = () => {
           <Typography variant="h6">
             Total Possible Score:{' '}
             {quiz.questions.reduce(
-              (sum, q) => sum + ((q?.maxPoints) || 3000),
+              (sum, q) => sum + ((q?.maxPoints) || defaultPoints),
               0
             )}
           </Typography>
