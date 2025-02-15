@@ -10,9 +10,9 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
-import { uploadData } from 'aws-amplify/storage';
 import QuizCreationProgress from '../components/QuizCreationProgress';
 import { useNavigate } from 'react-router-dom';
+import KnowledgeFileModal from '../components/KnowledgeFileModal';
 
 const client = generateClient<Schema>();
 
@@ -21,52 +21,22 @@ const CreateQuiz: React.FC = () => {
   const [quizId] = useState(() => uuidv4());
   const [description, setDescription] = useState('');
   const [numQuestions, setNumQuestions] = useState<number>(5);
-  const [knowledgeFile, setKnowledgeFile] = useState<File | null>(null);
+  const [knowledgeFileKey, setKnowledgeFileKey] = useState('');
   const [submitted, setSubmitted] = useState(false);
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setKnowledgeFile(event.target.files[0]);
-    }
-  };
-
-  const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.onload = () => {
-        if (reader.result instanceof ArrayBuffer) {
-          resolve(reader.result);
-        } else {
-          reject(new Error('Failed to read file as ArrayBuffer'));
-        }
-      };
-      reader.onerror = reject;
-    });
-  };
+  const [openModal, setOpenModal] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    let knowledgeFileKey = '';
     setSubmitted(true);
-    console.log('Creating quiz:', description, numQuestions, knowledgeFile);
     try {
-      if (knowledgeFile) {
-        const arrayBuffer = await readFileAsArrayBuffer(knowledgeFile);
-        const result = uploadData({
-          data: arrayBuffer,
-          path: `knowledge/${knowledgeFile.name}`,
-        });
-        knowledgeFileKey = (await result.result).path;
-      }
-      // Call the mutation and capture the returned quiz object.
+      // If you also want to support uploading a new file outside the modal,
+      // you could include that logic here.
       await client.mutations.quizGenerator({
         quizId,
         prompt: description,
         numQuestions,
         knowledge: knowledgeFileKey,
       });
-
     } catch (error) {
       setSubmitted(false);
       console.error('Error creating quiz:', error);
@@ -93,7 +63,7 @@ const CreateQuiz: React.FC = () => {
 
   return (
     <Container maxWidth="sm">
-      {(!submitted) && (
+      {!submitted && (
         <Box mt={4}>
           <Typography variant="h4" gutterBottom>
             Create New Quiz
@@ -121,12 +91,16 @@ const CreateQuiz: React.FC = () => {
             />
             <Box mt={2}>
               <InputLabel>Knowledge File (optional)</InputLabel>
-              <input
-                type="file"
-                accept=".pdf,.txt,.doc,.docx"
-                onChange={handleFileChange}
+              <Button
+                variant="outlined"
+                onClick={() => setOpenModal(true)}
+                sx={{ mt: 1 }}
                 disabled={submitted}
-              />
+              >
+                {knowledgeFileKey
+                  ? `Change File (${knowledgeFileKey.split('/').pop()})`
+                  : 'Select File'}
+              </Button>
             </Box>
             <Box mt={4}>
               <Button
@@ -142,11 +116,15 @@ const CreateQuiz: React.FC = () => {
         </Box>
       )}
 
-      {submitted && (
-        <QuizCreationProgress
-          quizId={quizId}
-        />
-      )}
+      {submitted && <QuizCreationProgress quizId={quizId} />}
+      <KnowledgeFileModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onSelect={(fileKey) => {
+          setKnowledgeFileKey(fileKey);
+          setOpenModal(false);
+        }}
+      />
     </Container>
   );
 };

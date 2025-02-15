@@ -26,7 +26,13 @@ const Home: React.FC = () => {
     // Subscribe to the Quiz model; any changes update the list in real time.
     const subscription = client.models.Quiz.observeQuery().subscribe({
       next: (data) => {
-        setQuizzes([...data.items]);
+        const sortedItems = [...data.items].sort((a, b) => {
+          // Adjust the field name if necessary (e.g. updatedAt)
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        });
+        setQuizzes(sortedItems);
       },
       error: (err) => console.error(err),
     });
@@ -43,15 +49,28 @@ const Home: React.FC = () => {
 
   return (
     <Container>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mt={4} mb={2}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mt={4}
+        mb={2}
+      >
         <Typography variant="h4">My Quizzes</Typography>
-        <Button variant="contained" color="primary" onClick={() => navigate('/create')}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => navigate('/create')}
+        >
           Create New Quiz
         </Button>
       </Box>
       <List>
         {quizzes.map((quiz) => (
-          <ListItem key={quiz.id} sx={{ display: 'flex', alignItems: 'center' }}>
+          <ListItem
+            key={quiz.id}
+            sx={{ display: 'flex', alignItems: 'center' }}
+          >
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <ListItemText
                 primary={quiz.title}
@@ -64,13 +83,22 @@ const Home: React.FC = () => {
               />
             </Box>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton aria-label="attempt" onClick={() => navigate(`/quiz/${quiz.id}`)}>
+              <IconButton
+                aria-label="attempt"
+                onClick={() => navigate(`/quiz/${quiz.id}`)}
+              >
                 <PlayArrowIcon />
               </IconButton>
-              <IconButton aria-label="edit" onClick={() => navigate(`/edit/${quiz.id}`)}>
+              <IconButton
+                aria-label="edit"
+                onClick={() => navigate(`/edit/${quiz.id}`)}
+              >
                 <EditIcon />
               </IconButton>
-              <IconButton aria-label="delete" onClick={() => handleDelete(quiz.id)}>
+              <IconButton
+                aria-label="delete"
+                onClick={() => handleDelete(quiz.id)}
+              >
                 <DeleteIcon />
               </IconButton>
             </Box>
