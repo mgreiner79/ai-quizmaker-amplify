@@ -41,7 +41,7 @@ const App: React.FC = () => {
       />
 
       {/* Fallback redirect */}
-      {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
