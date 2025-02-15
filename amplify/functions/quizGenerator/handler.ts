@@ -7,8 +7,12 @@ import type { Schema } from '../../data/resource';
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
 import { env } from '$amplify/env/quiz-generator';
 
-const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
+const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
+  env,
+);
 Amplify.configure(resourceConfig, libraryOptions);
+
+console.log('Running quizGenerator function');
 
 const llmClient = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -19,30 +23,30 @@ const llmClient = new OpenAI({
  */
 const getKnowledgeText = async (knowledge: string): Promise<string> => {
   try {
-    const bucketName = process.env.BUCKET_NAME ?? "";
-    const bucketRegion = process.env.BUCKET_REGION ?? "";
+    const bucketName = process.env.BUCKET_NAME ?? '';
+    const bucketRegion = process.env.BUCKET_REGION ?? '';
     console.log(`Using bucket: ${bucketName}`);
-    
+
     const s3Response = await downloadData({
       path: knowledge,
       options: {
         bucket: { bucketName, region: bucketRegion },
       },
     }).result;
-    
+
     // Retrieve file content as a Blob.
     const fileBlob = await s3Response.body.blob();
     if (!fileBlob) {
       throw new Error('File content is empty');
     }
-    
+
     const lowerKey = knowledge.toLowerCase();
     if (lowerKey.endsWith('.pdf')) {
       // Dynamically import pdf-parse for PDF text extraction.
       const { PdfReader } = await import('pdfreader');
       const buffer = Buffer.from(await fileBlob.arrayBuffer());
       return await new Promise<string>((resolve, reject) => {
-        let text = "";
+        let text = '';
         new PdfReader().parseBuffer(buffer, (err, item) => {
           if (err) {
             reject(err);
@@ -50,7 +54,7 @@ const getKnowledgeText = async (knowledge: string): Promise<string> => {
             // End of file reached.
             resolve(text);
           } else if (item.text) {
-            text += item.text + "\n";
+            text += item.text + '\n';
           }
         });
       });
@@ -72,13 +76,17 @@ const getKnowledgeText = async (knowledge: string): Promise<string> => {
 /**
  * Main handler for quiz generation.
  */
-export const handler: Schema['quizGenerator']['functionHandler'] = async (event) => {
+export const handler: Schema['quizGenerator']['functionHandler'] = async (
+  event,
+) => {
   console.log('Received event:', JSON.stringify(event));
 
   // Extract and validate required parameters.
   const { quizId, knowledge, prompt, numQuestions } = event.arguments;
   if (!quizId || !prompt || !numQuestions) {
-    throw new Error('Missing required parameters: quizId, description, or numQuestions.');
+    throw new Error(
+      'Missing required parameters: quizId, description, or numQuestions.',
+    );
   }
 
   // Create a client with the auth token.
@@ -104,7 +112,7 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (event)
     await publishProgress('Warming up');
 
     // Step 2: Extract knowledge (if provided).
-    let knowledgeText = "";
+    let knowledgeText = '';
     if (knowledge) {
       await publishProgress('Extracting knowledge');
       knowledgeText = await getKnowledgeText(knowledge);
@@ -158,11 +166,13 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (event)
     }
 
     // Step 5: Determine the owner (user) from event identity.
-    let ownerSub = "";
-    if (event.identity && "sub" in event.identity) {
+    let ownerSub = '';
+    if (event.identity && 'sub' in event.identity) {
       ownerSub = event.identity.sub;
     } else {
-      throw new Error("Could not determine the user who triggered this function. 'sub' not found in event.identity.");
+      throw new Error(
+        "Could not determine the user who triggered this function. 'sub' not found in event.identity.",
+      );
     }
 
     // Step 6: Create the new quiz record.
@@ -181,12 +191,12 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (event)
 
     if (newQuiz.errors) {
       console.error('Quiz creation errors:', newQuiz.errors);
-      throw new Error("Quiz creation failed.");
+      throw new Error('Quiz creation failed.');
     }
 
     await publishProgress('Quiz generation complete');
 
-    console.log("Finished creating quiz:", newQuiz);
+    console.log('Finished creating quiz:', newQuiz);
 
     return newQuiz.data;
   } catch (error) {
