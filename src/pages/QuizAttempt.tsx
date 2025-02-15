@@ -19,23 +19,23 @@ const client = generateClient<Schema>();
 type Phase = 'overview' | 'preview' | 'question' | 'explanation' | 'finished';
 
 const QuizAttempt: React.FC = () => {
-    const { quizId } = useParams<{ quizId: string }>();
-    const navigate = useNavigate();
+  const { quizId } = useParams<{ quizId: string }>();
+  const navigate = useNavigate();
 
-    const [quiz, setQuiz] = useState<Schema['Quiz']['type'] | null>(null);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [phase, setPhase] = useState<Phase>('overview');
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-    const [previewTimer, setPreviewTimer] = useState<number>(0);
-    const [answerTimer, setAnswerTimer] = useState<number>(0);
-    const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-    const [score, setScore] = useState<number>(0);
-    const [userAnswers, setUserAnswers] = useState<string[]>([]);
-    const [attemptSubmitted, setAttemptSubmitted] = useState<boolean>(false);
-    const defaultPoints = 3000;
-    const defaultAnswerTime = 30;
-    const defaultPreviewTime = 10;
-    const nSteps = 5;
+  const [quiz, setQuiz] = useState<Schema['Quiz']['type'] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [phase, setPhase] = useState<Phase>('overview');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+  const [previewTimer, setPreviewTimer] = useState<number>(0);
+  const [answerTimer, setAnswerTimer] = useState<number>(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [score, setScore] = useState<number>(0);
+  const [userAnswers, setUserAnswers] = useState<string[]>([]);
+  const [attemptSubmitted, setAttemptSubmitted] = useState<boolean>(false);
+  const defaultPoints = 3000;
+  const defaultAnswerTime = 30;
+  const defaultPreviewTime = 10;
+  const nSteps = 5;
 
   // Refs for timer intervals (we clear them on phase changes/unmount)
   const previewIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -50,15 +50,20 @@ const QuizAttempt: React.FC = () => {
     const fetchQuiz = async () => {
       try {
         // Assumes the client exposes a get method for models.Quiz.
-        const fetchedQuiz = await client.models.Quiz.get({ id: quizId });
+        const fetchedQuiz = await client.models.Quiz.get(
+          { id: quizId },
+          {
+            authMode: 'apiKey',
+          },
+        );
         if (!fetchedQuiz.data) {
           console.error('Quiz not found');
           navigate('/');
           return;
         } else {
-            const data = fetchedQuiz.data;
-            setQuiz(data);
-            setLoading(false);
+          const data = fetchedQuiz.data;
+          setQuiz(data);
+          setLoading(false);
         }
       } catch (error) {
         console.error('Error fetching quiz:', error);
@@ -74,12 +79,18 @@ const QuizAttempt: React.FC = () => {
   }, [quizId, navigate]);
 
   // Get the current question (if any)
-  const currentQuestion: Schema['Question']['type'] | null =
-    quiz?.questions ? quiz.questions[currentQuestionIndex] ?? null : null;
-   
+  const currentQuestion: Schema['Question']['type'] | null = quiz?.questions
+    ? quiz.questions[currentQuestionIndex] ?? null
+    : null;
+
   // Called when the user clicks the "Start Quiz" button.
   const startQuiz = () => {
-    if (quiz && quiz.questions && quiz.questions.length > 0 && currentQuestion) {
+    if (
+      quiz &&
+      quiz.questions &&
+      quiz.questions.length > 0 &&
+      currentQuestion
+    ) {
       setPhase('preview');
       setPreviewTimer(currentQuestion.previewTime || defaultPreviewTime);
     }
@@ -134,14 +145,13 @@ const QuizAttempt: React.FC = () => {
     if (phase !== 'question' || selectedAnswer) return;
     setSelectedAnswer(answerId);
     if (answerIntervalRef.current) clearInterval(answerIntervalRef.current);
-  
+
     // Calculate how long the user took to answer.
     const answerDuration = currentQuestion?.answerTime || defaultAnswerTime;
     const timeTaken = answerDuration - answerTimer;
-  
+
     let pointsAwarded = 0;
     if (answerId === currentQuestion?.correctAnswerId) {
-
       // Each step lasts:
       const stepDuration = answerDuration / nSteps;
       // Determine how many steps have passed.
@@ -151,12 +161,11 @@ const QuizAttempt: React.FC = () => {
       const deductionPerStep = maxPoints / nSteps;
       pointsAwarded = Math.max(maxPoints - stepsPassed * deductionPerStep, 0);
     }
-  
+
     setScore((prev) => prev + pointsAwarded);
     setUserAnswers((prevAnswers) => [...prevAnswers, answerId]);
     setPhase('explanation');
   };
-  
 
   // When the user clicks "Next" after the explanation.
   const handleNextQuestion = () => {
@@ -165,7 +174,9 @@ const QuizAttempt: React.FC = () => {
       setCurrentQuestionIndex((prev) => prev + 1);
       // Begin the next question's preview phase.
       setPhase('preview');
-      const previewTime = quiz.questions[currentQuestionIndex + 1]?.previewTime || quiz.previewTime
+      const previewTime =
+        quiz.questions[currentQuestionIndex + 1]?.previewTime ||
+        quiz.previewTime;
       setPreviewTimer(previewTime);
     } else {
       setPhase('finished');
@@ -176,17 +187,22 @@ const QuizAttempt: React.FC = () => {
   useEffect(() => {
     if (phase === 'finished' && quiz && !attemptSubmitted) {
       const totalPossible = quiz.questions.reduce(
-        (sum, q) => sum + ((q?.maxPoints) || defaultPoints),
-        0
+        (sum, q) => sum + (q?.maxPoints || defaultPoints),
+        0,
       );
       const submitAttempt = async () => {
         try {
-          await client.models.QuizAttempt.create({
-            quizId: quiz.id,
-            score,
-            totalPossible,
-            answers: userAnswers,
-          });
+          await client.models.QuizAttempt.create(
+            {
+              quizId: quiz.id,
+              score,
+              totalPossible,
+              answers: userAnswers,
+            },
+            {
+              authMode: 'apiKey',
+            },
+          );
           setAttemptSubmitted(true);
         } catch (error) {
           console.error('Error submitting quiz attempt:', error);
@@ -270,29 +286,35 @@ const QuizAttempt: React.FC = () => {
             {currentQuestion.text}
           </Typography>
           <Box mt={2} mb={2}>
-            <Typography variant="h6">
-              Time Remaining: {answerTimer}s
-            </Typography>
+            <Typography variant="h6">Time Remaining: {answerTimer}s</Typography>
           </Box>
           <Box display="flex" flexWrap="wrap" gap={2}>
-            {currentQuestion.answers.map((answer) => 
-              answer && (
-                <Card
-                  key={answer.id}
-                  sx={{
-                    width: 'calc(50% - 8px)',
-                    border:
-                      selectedAnswer === answer.id ? '2px solid green' : '1px solid #ccc',
-                    opacity: selectedAnswer && selectedAnswer !== answer.id ? 0.5 : 1,
-                  }}
-                >
-                  <CardActionArea onClick={() => handleAnswerSelect(answer.id)}>
-                    <CardContent>
-                      <Typography variant="body1">{answer.text}</Typography>
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              )
+            {currentQuestion.answers.map(
+              (answer) =>
+                answer && (
+                  <Card
+                    key={answer.id}
+                    sx={{
+                      width: 'calc(50% - 8px)',
+                      border:
+                        selectedAnswer === answer.id
+                          ? '2px solid green'
+                          : '1px solid #ccc',
+                      opacity:
+                        selectedAnswer && selectedAnswer !== answer.id
+                          ? 0.5
+                          : 1,
+                    }}
+                  >
+                    <CardActionArea
+                      onClick={() => handleAnswerSelect(answer.id)}
+                    >
+                      <CardContent>
+                        <Typography variant="body1">{answer.text}</Typography>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                ),
             )}
           </Box>
         </Box>
@@ -317,7 +339,8 @@ const QuizAttempt: React.FC = () => {
                   sx={{
                     mb: 1,
                     border: isCorrect ? '2px solid green' : '1px solid #ccc',
-                    backgroundColor: isSelected && !isCorrect ? '#ffcccc' : 'inherit',
+                    backgroundColor:
+                      isSelected && !isCorrect ? '#ffcccc' : 'inherit',
                   }}
                 >
                   <CardContent>
@@ -333,7 +356,11 @@ const QuizAttempt: React.FC = () => {
             })}
           </Box>
           <Box mt={2}>
-            <Button variant="contained" color="primary" onClick={handleNextQuestion}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleNextQuestion}
+            >
               {quiz.questions.length === currentQuestionIndex + 1
                 ? 'Finish Quiz'
                 : 'Next Question'}
@@ -351,12 +378,16 @@ const QuizAttempt: React.FC = () => {
           <Typography variant="h6">
             Total Possible Score:{' '}
             {quiz.questions.reduce(
-              (sum, q) => sum + ((q?.maxPoints) || defaultPoints),
-              0
+              (sum, q) => sum + (q?.maxPoints || defaultPoints),
+              0,
             )}
           </Typography>
           <Box mt={2}>
-            <Button variant="contained" color="primary" onClick={() => navigate('/')}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => navigate('/')}
+            >
               Go Home
             </Button>
           </Box>
