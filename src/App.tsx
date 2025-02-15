@@ -15,12 +15,33 @@ const App: React.FC = () => {
       <Route path="/quiz/:quizId" element={<QuizAttempt />} />
 
       {/* Protected Routes */}
-      <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-      <Route path="/create" element={<ProtectedRoute><CreateQuiz /></ProtectedRoute>} />
-      <Route path="/edit/:quizId" element={<ProtectedRoute><EditQuiz /></ProtectedRoute>} />
-      
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/create"
+        element={
+          <ProtectedRoute>
+            <CreateQuiz />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/edit/:quizId"
+        element={
+          <ProtectedRoute>
+            <EditQuiz />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Fallback redirect */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
     </Routes>
   );
 };

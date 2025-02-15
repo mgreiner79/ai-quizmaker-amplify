@@ -39,7 +39,10 @@ const components = {
     Header() {
       const { tokens } = useTheme();
       return (
-        <Heading padding={`${tokens.space.xl} 0 0 ${tokens.space.xl}`} level={3}>
+        <Heading
+          padding={`${tokens.space.xl} 0 0 ${tokens.space.xl}`}
+          level={3}
+        >
           Sign in to your account
         </Heading>
       );
@@ -64,7 +67,10 @@ const components = {
     Header() {
       const { tokens } = useTheme();
       return (
-        <Heading padding={`${tokens.space.xl} 0 0 ${tokens.space.xl}`} level={3}>
+        <Heading
+          padding={`${tokens.space.xl} 0 0 ${tokens.space.xl}`}
+          level={3}
+        >
           Create a new account
         </Heading>
       );
@@ -109,9 +115,7 @@ const LoginPage: React.FC = () => {
       }}
     >
       <Authenticator components={components} formFields={formFields}>
-        {({ user }) => (
-          user ? <Navigate to="/" replace /> : <></>
-        )}
+        {({}) => <Navigate to="/" replace />}
       </Authenticator>
     </div>
   );
