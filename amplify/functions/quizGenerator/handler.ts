@@ -126,6 +126,8 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
       Generate a quiz with the following description:
       ${prompt}
 
+      Make it so that the correct and incorrect answers have roughtly similar number of words in them.
+
       The quiz should have ${numQuestions} questions. Each question should include:
       - text: the question text
       - previewTime: time in seconds to preview the question (if it overrides the default)
@@ -136,8 +138,8 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
       - explanation: an explanation for the answer
 
       Use as the following defaults:
-      - previewTime: 10
-      - answerTime: 30
+      - previewTime: 5
+      - answerTime: 20
       - maxPoints: 3000
 
       Respond with valid JSON.

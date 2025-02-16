@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Box,
@@ -9,10 +9,13 @@ import {
   CardContent,
   AppBar,
   Toolbar,
+  LinearProgress,
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import confetti from 'canvas-confetti';
+import './QuizAttempt.css'; // Import the associated CSS file
 
 const client = generateClient<Schema>();
 
@@ -27,19 +30,27 @@ const QuizAttempt: React.FC = () => {
   const [phase, setPhase] = useState<Phase>('overview');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [previewTimer, setPreviewTimer] = useState<number>(0);
-  const [answerTimer, setAnswerTimer] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
   const [attemptSubmitted, setAttemptSubmitted] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(100);
+
+  // State to track available points in discrete steps.
+  // maxPointsState is the current available points.
+  // oldMaxPoints is used to animate the previous value.
+  const [maxPointsState, setMaxPointsState] = useState<number | null>(null);
+  const [oldMaxPoints, setOldMaxPoints] = useState<number | null>(null);
+
   const defaultPoints = 3000;
-  const defaultAnswerTime = 30;
-  const defaultPreviewTime = 10;
+  const defaultAnswerTime = 20; // seconds
+  const defaultPreviewTime = 5;
   const nSteps = 5;
 
-  // Refs for timer intervals (we clear them on phase changes/unmount)
-  const previewIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
-  const answerIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  // Refs for timers and animation
+  const previewIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const questionStartTimeRef = useRef<number>(0);
 
   // Fetch quiz data on mount
   useEffect(() => {
@@ -49,20 +60,16 @@ const QuizAttempt: React.FC = () => {
     }
     const fetchQuiz = async () => {
       try {
-        // Assumes the client exposes a get method for models.Quiz.
         const fetchedQuiz = await client.models.Quiz.get(
           { id: quizId },
-          {
-            authMode: 'apiKey',
-          },
+          { authMode: 'apiKey' },
         );
         if (!fetchedQuiz.data) {
           console.error('Quiz not found');
           navigate('/');
           return;
         } else {
-          const data = fetchedQuiz.data;
-          setQuiz(data);
+          setQuiz(fetchedQuiz.data);
           setLoading(false);
         }
       } catch (error) {
@@ -74,16 +81,31 @@ const QuizAttempt: React.FC = () => {
 
     return () => {
       if (previewIntervalRef.current) clearInterval(previewIntervalRef.current);
-      if (answerIntervalRef.current) clearInterval(answerIntervalRef.current);
+      if (animationFrameRef.current)
+        cancelAnimationFrame(animationFrameRef.current);
     };
   }, [quizId, navigate]);
 
-  // Get the current question (if any)
   const currentQuestion: Schema['Question']['type'] | null = quiz?.questions
     ? quiz.questions[currentQuestionIndex] ?? null
     : null;
 
-  // Called when the user clicks the "Start Quiz" button.
+  // Trigger confetti blast
+  const triggerConfetti = () => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+  };
+
+  // Play cheering sound (ensure cheer.mp3 exists in your public folder)
+  const playCheerSound = () => {
+    const audio = new Audio('/cheer.mp3');
+    audio.play();
+  };
+
+  // Start Quiz: transition from overview to preview
   const startQuiz = () => {
     if (
       quiz &&
@@ -96,16 +118,14 @@ const QuizAttempt: React.FC = () => {
     }
   };
 
-  // Handle the preview phase timer countdown.
+  // Preview countdown: update once per second
   useEffect(() => {
     if (phase === 'preview') {
       previewIntervalRef.current = setInterval(() => {
         setPreviewTimer((prev) => {
           if (prev <= 1) {
             clearInterval(previewIntervalRef.current!);
-            // Transition to the answer phase.
             setPhase('question');
-            setAnswerTimer(currentQuestion?.answerTime || defaultAnswerTime);
             return 0;
           }
           return prev - 1;
@@ -115,75 +135,108 @@ const QuizAttempt: React.FC = () => {
     return () => {
       if (previewIntervalRef.current) clearInterval(previewIntervalRef.current);
     };
+  }, [phase]);
+
+  // Smooth progress bar update using requestAnimationFrame
+  useEffect(() => {
+    if (phase === 'question' && currentQuestion) {
+      const totalTime =
+        (currentQuestion.answerTime || defaultAnswerTime) * 1000; // total time in ms
+      questionStartTimeRef.current = Date.now();
+
+      const animate = () => {
+        const elapsed = Date.now() - questionStartTimeRef.current;
+        const remaining = totalTime - elapsed;
+        const newProgress = Math.max((remaining / totalTime) * 100, 0);
+        setProgress(newProgress);
+        if (remaining > 0) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          setPhase('explanation');
+        }
+      };
+      animationFrameRef.current = requestAnimationFrame(animate);
+
+      return () => {
+        if (animationFrameRef.current)
+          cancelAnimationFrame(animationFrameRef.current);
+      };
+    }
   }, [phase, currentQuestion]);
 
-  // Handle the answer phase timer countdown.
+  // Compute and update the available points (in steps)
   useEffect(() => {
-    if (phase === 'question') {
-      answerIntervalRef.current = setInterval(() => {
-        setAnswerTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(answerIntervalRef.current!);
-            // If no answer was selected, record an empty answer.
-            if (!selectedAnswer) {
-              setUserAnswers((prevAnswers) => [...prevAnswers, '']);
-            }
-            setPhase('explanation');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (phase === 'question' && currentQuestion) {
+      const maxForQuestion = currentQuestion.maxPoints || defaultPoints;
+      const totalTime =
+        (currentQuestion.answerTime || defaultAnswerTime) * 1000; // in ms
+      const stepDuration = totalTime / nSteps;
+      const elapsed = Date.now() - questionStartTimeRef.current;
+      const stepsPassed = Math.floor(elapsed / stepDuration);
+      // Decrease points in steps; remain constant until a step boundary is reached.
+      const newMax = Math.max(
+        maxForQuestion - stepsPassed * (maxForQuestion / nSteps),
+        0,
+      );
+      if (maxPointsState === null) {
+        setMaxPointsState(newMax);
+      } else if (newMax !== maxPointsState) {
+        setOldMaxPoints(maxPointsState);
+        setMaxPointsState(newMax);
+        setTimeout(() => {
+          setOldMaxPoints(null);
+        }, 500); // animation duration matches CSS
+      }
     }
-    return () => {
-      if (answerIntervalRef.current) clearInterval(answerIntervalRef.current);
-    };
-  }, [phase, selectedAnswer]);
+  }, [progress, phase, currentQuestion, maxPointsState]);
 
-  // Called when the user selects an answer.
+  // Handle answer selection
   const handleAnswerSelect = (answerId: string) => {
     if (phase !== 'question' || selectedAnswer) return;
     setSelectedAnswer(answerId);
-    if (answerIntervalRef.current) clearInterval(answerIntervalRef.current);
+    if (animationFrameRef.current)
+      cancelAnimationFrame(animationFrameRef.current);
 
-    // Calculate how long the user took to answer.
-    const answerDuration = currentQuestion?.answerTime || defaultAnswerTime;
-    const timeTaken = answerDuration - answerTimer;
+    const totalTime = (currentQuestion?.answerTime || defaultAnswerTime) * 1000;
+    const elapsed = Date.now() - questionStartTimeRef.current;
+    const timeTaken = elapsed / 1000;
 
     let pointsAwarded = 0;
     if (answerId === currentQuestion?.correctAnswerId) {
-      // Each step lasts:
-      const stepDuration = answerDuration / nSteps;
-      // Determine how many steps have passed.
+      triggerConfetti();
+      playCheerSound();
+      const stepDuration = totalTime / nSteps / 1000; // in seconds
       const stepsPassed = Math.floor(timeTaken / stepDuration);
-      // Calculate points based on the number of steps passed.
-      const maxPoints = currentQuestion?.maxPoints || defaultPoints;
-      const deductionPerStep = maxPoints / nSteps;
-      pointsAwarded = Math.max(maxPoints - stepsPassed * deductionPerStep, 0);
+      const maxForQuestion = currentQuestion?.maxPoints || defaultPoints;
+      const deductionPerStep = maxForQuestion / nSteps;
+      pointsAwarded = Math.max(
+        maxForQuestion - stepsPassed * deductionPerStep,
+        0,
+      );
     }
 
     setScore((prev) => prev + pointsAwarded);
-    setUserAnswers((prevAnswers) => [...prevAnswers, answerId]);
+    setUserAnswers((prev) => [...prev, answerId]);
     setPhase('explanation');
   };
 
-  // When the user clicks "Next" after the explanation.
+  // Handle transition to the next question
   const handleNextQuestion = () => {
     setSelectedAnswer(null);
     if (quiz && currentQuestionIndex + 1 < quiz.questions.length) {
       setCurrentQuestionIndex((prev) => prev + 1);
-      // Begin the next question's preview phase.
       setPhase('preview');
       const previewTime =
         quiz.questions[currentQuestionIndex + 1]?.previewTime ||
         quiz.previewTime;
       setPreviewTimer(previewTime);
+      setProgress(100);
     } else {
       setPhase('finished');
     }
   };
 
-  // When quiz is finished, optionally submit the attempt to the backend.
+  // When finished, submit the quiz attempt
   useEffect(() => {
     if (phase === 'finished' && quiz && !attemptSubmitted) {
       const totalPossible = quiz.questions.reduce(
@@ -193,15 +246,8 @@ const QuizAttempt: React.FC = () => {
       const submitAttempt = async () => {
         try {
           await client.models.QuizAttempt.create(
-            {
-              quizId: quiz.id,
-              score,
-              totalPossible,
-              answers: userAnswers,
-            },
-            {
-              authMode: 'apiKey',
-            },
+            { quizId: quiz.id, score, totalPossible, answers: userAnswers },
+            { authMode: 'apiKey' },
           );
           setAttemptSubmitted(true);
         } catch (error) {
@@ -228,7 +274,6 @@ const QuizAttempt: React.FC = () => {
     );
   }
 
-  // A top–right score display using an AppBar.
   const renderScoreDisplay = () => (
     <AppBar position="static" color="default" sx={{ mb: 2 }}>
       <Toolbar>
@@ -285,10 +330,7 @@ const QuizAttempt: React.FC = () => {
           <Typography variant="body1" gutterBottom>
             {currentQuestion.text}
           </Typography>
-          <Box mt={2} mb={2}>
-            <Typography variant="h6">Time Remaining: {answerTimer}s</Typography>
-          </Box>
-          <Box display="flex" flexWrap="wrap" gap={2}>
+          <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
             {currentQuestion.answers.map(
               (answer) =>
                 answer && (
@@ -315,6 +357,37 @@ const QuizAttempt: React.FC = () => {
                     </CardActionArea>
                   </Card>
                 ),
+            )}
+          </Box>
+          {/* Smooth progress bar below the answer options */}
+          <Box mt={2} display="flex" justifyContent="center">
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              sx={{
+                width: '150%',
+                height: 20,
+                borderRadius: 10,
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 10,
+                  transition: 'width 0.5s ease-out',
+                },
+              }}
+            />
+          </Box>
+          {/* Display "points available" below the progress bar */}
+          <Box mt={1} position="relative" height={30}>
+            <Typography variant="subtitle1" align="center">
+              Points Available: {maxPointsState}
+            </Typography>
+            {oldMaxPoints !== null && (
+              <Typography
+                variant="subtitle1"
+                align="center"
+                className="fading-text"
+              >
+                Points Available: {oldMaxPoints}
+              </Typography>
             )}
           </Box>
         </Box>
