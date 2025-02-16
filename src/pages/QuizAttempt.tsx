@@ -11,6 +11,8 @@ import {
   Toolbar,
   LinearProgress,
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
@@ -35,6 +37,8 @@ const QuizAttempt: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
   const [attemptSubmitted, setAttemptSubmitted] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(100);
+  const [previewProgress, setPreviewProgress] = useState<number>(100);
+  const previewStartTimeRef = useRef<number>(0);
 
   // State to track available points in discrete steps.
   // maxPointsState is the current available points.
@@ -102,7 +106,9 @@ const QuizAttempt: React.FC = () => {
   // Play cheering sound (ensure cheer.mp3 exists in your public folder)
   const playCheerSound = () => {
     const audio = new Audio('/cheer.mp3');
-    audio.play();
+    audio.play().catch((error) => {
+      console.error('Audio playback failed:', error);
+    });
   };
 
   // Start Quiz: transition from overview to preview
@@ -136,6 +142,27 @@ const QuizAttempt: React.FC = () => {
       if (previewIntervalRef.current) clearInterval(previewIntervalRef.current);
     };
   }, [phase]);
+
+  useEffect(() => {
+    if (phase === 'preview' && currentQuestion) {
+      const totalPreviewTime =
+        (currentQuestion.previewTime || defaultPreviewTime) * 1000; // total time in ms
+      previewStartTimeRef.current = Date.now();
+
+      const updatePreviewProgress = () => {
+        const elapsed = Date.now() - previewStartTimeRef.current;
+        const remaining = totalPreviewTime - elapsed;
+        const newProgress = Math.max((remaining / totalPreviewTime) * 100, 0);
+        setPreviewProgress(newProgress);
+        if (remaining > 0) {
+          requestAnimationFrame(updatePreviewProgress);
+        }
+      };
+
+      const id = requestAnimationFrame(updatePreviewProgress);
+      return () => cancelAnimationFrame(id);
+    }
+  }, [phase, currentQuestion]);
 
   // Smooth progress bar update using requestAnimationFrame
   useEffect(() => {
@@ -280,193 +307,257 @@ const QuizAttempt: React.FC = () => {
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
           {quiz.title}
         </Typography>
-        <Typography variant="h6">Score: {score}</Typography>
+        <Box display="flex" alignItems="center">
+          {/* Coin Icon */}
+          <img
+            src="/coin.png"
+            alt="coin"
+            style={{ width: 28, height: 28, marginRight: 8 }}
+          />
+          <Typography variant="h6">{score}</Typography>
+        </Box>
       </Toolbar>
     </AppBar>
   );
 
   return (
-    <Container maxWidth="md">
-      {phase !== 'overview' && renderScoreDisplay()}
+    <div className="quiz-attempt-wrapper">
+      <Container maxWidth="md" className="quiz-container">
+        {phase !== 'overview' && renderScoreDisplay()}
 
-      {phase === 'overview' && (
-        <Box mt={4}>
-          <Typography variant="h4" gutterBottom>
-            {quiz.title}
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            {quiz.description}
-          </Typography>
-          <Box mt={2}>
-            <Button variant="contained" color="primary" onClick={startQuiz}>
-              Start Quiz
-            </Button>
-          </Box>
-        </Box>
-      )}
-
-      {phase === 'preview' && currentQuestion && (
-        <Box mt={4}>
-          <Typography variant="h5" gutterBottom>
-            Get Ready!
-          </Typography>
-          <Typography variant="h6" gutterBottom>
-            Question Preview
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            {currentQuestion.text}
-          </Typography>
-          <Typography variant="h4" color="secondary">
-            {previewTimer}
-          </Typography>
-        </Box>
-      )}
-
-      {phase === 'question' && currentQuestion && (
-        <Box mt={4}>
-          <Typography variant="h5" gutterBottom>
-            Question
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            {currentQuestion.text}
-          </Typography>
-          <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
-            {currentQuestion.answers.map(
-              (answer) =>
-                answer && (
-                  <Card
-                    key={answer.id}
-                    sx={{
-                      width: 'calc(50% - 8px)',
-                      border:
-                        selectedAnswer === answer.id
-                          ? '2px solid green'
-                          : '1px solid #ccc',
-                      opacity:
-                        selectedAnswer && selectedAnswer !== answer.id
-                          ? 0.5
-                          : 1,
-                    }}
-                  >
-                    <CardActionArea
-                      onClick={() => handleAnswerSelect(answer.id)}
-                    >
-                      <CardContent>
-                        <Typography variant="body1">{answer.text}</Typography>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
-                ),
-            )}
-          </Box>
-          {/* Smooth progress bar below the answer options */}
-          <Box mt={2} display="flex" justifyContent="center">
-            <LinearProgress
-              variant="determinate"
-              value={progress}
-              sx={{
-                width: '150%',
-                height: 20,
-                borderRadius: 10,
-                '& .MuiLinearProgress-bar': {
-                  borderRadius: 10,
-                  transition: 'width 0.5s ease-out',
-                },
-              }}
-            />
-          </Box>
-          {/* Display "points available" below the progress bar */}
-          <Box mt={1} position="relative" height={30}>
-            <Typography variant="subtitle1" align="center">
-              Points Available: {maxPointsState}
+        {phase === 'overview' && (
+          <Box mt={4}>
+            <Typography variant="h4" gutterBottom>
+              {quiz.title}
             </Typography>
-            {oldMaxPoints !== null && (
+            <Typography variant="body1" gutterBottom>
+              {quiz.description}
+            </Typography>
+            <Box mt={2}>
+              <Button variant="contained" color="primary" onClick={startQuiz}>
+                Start Quiz
+              </Button>
+            </Box>
+          </Box>
+        )}
+
+        {phase === 'preview' && currentQuestion && (
+          <Box mt={4}>
+            <Typography variant="h5" gutterBottom>
+              Question
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              {currentQuestion.text}
+            </Typography>
+            <Box mt={2} display="flex" justifyContent="center">
+              <LinearProgress
+                variant="determinate"
+                value={previewProgress}
+                sx={{
+                  width: '150%',
+                  height: 20,
+                  backgroundColor: 'transparent',
+                  borderRadius: 10,
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 10,
+                    background: 'linear-gradient(90deg, #ff4081, #536dfe)',
+                    transition: 'width 0.5s ease-out',
+                  },
+                }}
+              />
+            </Box>
+            <Typography variant="h5" gutterBottom align="center">
+              Get Ready!
+            </Typography>
+          </Box>
+        )}
+
+        {phase === 'question' && currentQuestion && (
+          <Box mt={4} className="fade-in">
+            <Typography variant="h5" gutterBottom>
+              Question
+            </Typography>
+            <Typography variant="body1" gutterBottom>
+              {currentQuestion.text}
+            </Typography>
+            <Box display="flex" flexWrap="wrap" gap={2} mt={2}>
+              {currentQuestion.answers.map(
+                (answer) =>
+                  answer && (
+                    <Card
+                      key={answer.id}
+                      sx={{
+                        width: 'calc(50% - 8px)',
+                        transition: 'transform 0.3s, box-shadow 0.3s',
+                        '&:hover': {
+                          transform: 'scale(1.03)',
+                          boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
+                        },
+                        border:
+                          selectedAnswer === answer.id
+                            ? '2px solid green'
+                            : '1px solid #ccc',
+                        boxShadow:
+                          selectedAnswer === answer.id
+                            ? '0 4px 8px rgba(0,200,83,0.4)'
+                            : 'none',
+                        opacity:
+                          selectedAnswer && selectedAnswer !== answer.id
+                            ? 0.5
+                            : 1,
+                      }}
+                    >
+                      <CardActionArea
+                        onClick={() => handleAnswerSelect(answer.id)}
+                      >
+                        <CardContent>
+                          <Typography variant="body1">{answer.text}</Typography>
+                        </CardContent>
+                      </CardActionArea>
+                    </Card>
+                  ),
+              )}
+            </Box>
+            {/* Smooth progress bar below the answer options */}
+            <Box mt={2} display="flex" justifyContent="center">
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{
+                  width: '150%',
+                  height: 20,
+                  backgroundColor: 'transparent',
+                  borderRadius: 10,
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 10,
+                    background: 'linear-gradient(90deg, #ff4081, #536dfe)',
+                    transition: 'width 0.5s ease-out',
+                  },
+                }}
+              />
+            </Box>
+            {/* Display "points available" below the progress bar */}
+            <Box mt={1} position="relative" height={30}>
               <Typography
                 variant="subtitle1"
                 align="center"
-                className="fading-text"
+                className="points-display"
               >
-                Points Available: {oldMaxPoints}
+                Points Available: {maxPointsState}
               </Typography>
-            )}
-          </Box>
-        </Box>
-      )}
-
-      {phase === 'explanation' && currentQuestion && (
-        <Box mt={4}>
-          <Typography variant="h5" gutterBottom>
-            Explanation
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            {currentQuestion.text}
-          </Typography>
-          <Box mt={2}>
-            {currentQuestion.answers.map((answer) => {
-              if (!answer) return null;
-              const isCorrect = answer.id === currentQuestion.correctAnswerId;
-              const isSelected = answer.id === selectedAnswer;
-              return (
-                <Card
-                  key={answer.id}
-                  sx={{
-                    mb: 1,
-                    border: isCorrect ? '2px solid green' : '1px solid #ccc',
-                    backgroundColor:
-                      isSelected && !isCorrect ? '#ffcccc' : 'inherit',
-                  }}
+              {oldMaxPoints !== null && (
+                <Typography
+                  variant="subtitle1"
+                  align="center"
+                  className="points-display fading-text"
                 >
-                  <CardContent>
-                    <Typography variant="body1">{answer.text}</Typography>
-                    {isCorrect && (
-                      <Typography variant="caption" color="textSecondary">
-                        {currentQuestion.explanation}
-                      </Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  Points Available: {oldMaxPoints}
+                </Typography>
+              )}
+            </Box>
           </Box>
-          <Box mt={2}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleNextQuestion}
-            >
-              {quiz.questions.length === currentQuestionIndex + 1
-                ? 'Finish Quiz'
-                : 'Next Question'}
-            </Button>
-          </Box>
-        </Box>
-      )}
+        )}
 
-      {phase === 'finished' && (
-        <Box mt={4}>
-          <Typography variant="h4" gutterBottom>
-            Quiz Completed!
-          </Typography>
-          <Typography variant="h5">Your Score: {score}</Typography>
-          <Typography variant="h6">
-            Total Possible Score:{' '}
-            {quiz.questions.reduce(
-              (sum, q) => sum + (q?.maxPoints || defaultPoints),
-              0,
-            )}
-          </Typography>
-          <Box mt={2}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => navigate('/')}
-            >
-              Go Home
-            </Button>
+        {phase === 'explanation' && currentQuestion && (
+          <Box mt={4}>
+            <Typography variant="h5" gutterBottom>
+              Explanation
+            </Typography>
+            {/* Display the explanation text */}
+            <Typography variant="body1" gutterBottom>
+              {currentQuestion.explanation}
+            </Typography>
+            {/* Wrap answer cards in a flex container */}
+            <Box mt={2} display="flex" flexWrap="wrap" gap={2}>
+              {currentQuestion.answers.map((answer) => {
+                if (!answer) return null;
+                const isCorrect = answer.id === currentQuestion.correctAnswerId;
+                const isSelected = answer.id === selectedAnswer;
+
+                // Set styling: all cards get a green border if correct, red if incorrect.
+                const borderStyle = isCorrect
+                  ? '2px solid green'
+                  : '2px solid red';
+                const backgroundColor = isCorrect ? '#e8f5e9' : '#ffebee';
+
+                return (
+                  <Card
+                    key={answer.id}
+                    sx={{
+                      width: 'calc(50% - 8px)', // maintains a 2x2 grid
+                      mb: 1,
+                      border: borderStyle,
+                      backgroundColor: backgroundColor,
+                      minHeight: '80px',
+                      position: 'relative', // allows overlaying an icon
+                    }}
+                  >
+                    {/* Overlay icon on the selected answer */}
+                    {isSelected && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 2,
+                          left: 2,
+                          zIndex: 1,
+                        }}
+                      >
+                        {isCorrect ? (
+                          <CheckCircleIcon
+                            sx={{ color: 'green', fontSize: '24px' }}
+                          />
+                        ) : (
+                          <CancelIcon sx={{ color: 'red', fontSize: '24px' }} />
+                        )}
+                      </Box>
+                    )}
+                    <CardContent>
+                      <Typography variant="body1">{answer.text}</Typography>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </Box>
+            <Box mt={2}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleNextQuestion}
+              >
+                {quiz.questions.length === currentQuestionIndex + 1
+                  ? 'Finish Quiz'
+                  : 'Next Question'}
+              </Button>
+            </Box>
           </Box>
-        </Box>
-      )}
-    </Container>
+        )}
+
+        {phase === 'finished' && (
+          <Box mt={4}>
+            <Typography variant="h4" gutterBottom>
+              Quiz Completed!
+            </Typography>
+            <Typography variant="h5">Your Points: {score}</Typography>
+            <Typography variant="h6">
+              Total Possible Points:{' '}
+              {quiz.questions.reduce(
+                (sum, q) => sum + (q?.maxPoints || defaultPoints),
+                0,
+              )}
+            </Typography>
+            <Box mt={2}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate('/')}
+              >
+                Go Home
+              </Button>
+            </Box>
+          </Box>
+        )}
+      </Container>
+    </div>
   );
 };
 

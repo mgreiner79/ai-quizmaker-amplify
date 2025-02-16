@@ -18,3 +18,36 @@
   animation: fadeExpand 0.5s ease-out forwards;
   z-index: 1;
 }
+
+.quiz-container {
+  background: linear-gradient(180deg, #88c8ff 0%, #fad0c4 100%);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* QuizAttempt.css */
+.fade-in {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.points-display {
+  transition: opacity 0.5s ease-out;
+}
+
+.quiz-attempt-wrapper {
+  background-color: #3c89d0;
+  min-height: 100vh; /* ensures it covers the full viewport height */
+  padding: 1rem; /* optional, for some spacing */
+}
