@@ -104,8 +104,8 @@ const QuizAttempt: React.FC = () => {
   };
 
   // Play cheering sound (ensure cheer.mp3 exists in your public folder)
-  const playCheerSound = () => {
-    const audio = new Audio('/cheer.mp3');
+  const playCorrectSound = () => {
+    const audio = new Audio('/correct.mp3');
     audio.play().catch((error) => {
       console.error('Audio playback failed:', error);
     });
@@ -231,7 +231,7 @@ const QuizAttempt: React.FC = () => {
     let pointsAwarded = 0;
     if (answerId === currentQuestion?.correctAnswerId) {
       triggerConfetti();
-      playCheerSound();
+      playCorrectSound();
       const stepDuration = totalTime / nSteps / 1000; // in seconds
       const stepsPassed = Math.floor(timeTaken / stepDuration);
       const maxForQuestion = currentQuestion?.maxPoints || defaultPoints;
