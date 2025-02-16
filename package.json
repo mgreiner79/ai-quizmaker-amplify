@@ -29,6 +29,7 @@
     "@aws-amplify/backend": "^1.14.0",
     "@aws-amplify/backend-cli": "^1.4.9",
     "@aws-sdk/types": "^3.734.0",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/pdf-parse": "^1.1.4",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
