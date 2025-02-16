@@ -11,17 +11,26 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import QuizCreationProgress from '../components/QuizCreationProgress';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import KnowledgeFileModal from '../components/KnowledgeFileModal';
 
 const client = generateClient<Schema>();
 
 const CreateQuiz: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Prefill the form if state was passed (e.g., when cloning)
+  const initialPrompt = location.state?.prompt ?? '';
+  const initialNumQuestions = location.state?.numQuestions ?? 5;
+  const initialKnowledgeFileKey = location.state?.knowledgeFileKey ?? '';
+
   const [quizId] = useState(() => uuidv4());
-  const [description, setDescription] = useState('');
-  const [numQuestions, setNumQuestions] = useState<number>(5);
-  const [knowledgeFileKey, setKnowledgeFileKey] = useState('');
+  const [description, setDescription] = useState(initialPrompt);
+  const [numQuestions, setNumQuestions] = useState<number>(initialNumQuestions);
+  const [knowledgeFileKey, setKnowledgeFileKey] = useState(
+    initialKnowledgeFileKey,
+  );
   const [submitted, setSubmitted] = useState(false);
   const [openModal, setOpenModal] = useState(false);
 
@@ -29,8 +38,6 @@ const CreateQuiz: React.FC = () => {
     event.preventDefault();
     setSubmitted(true);
     try {
-      // If you also want to support uploading a new file outside the modal,
-      // you could include that logic here.
       await client.mutations.quizGenerator({
         quizId,
         prompt: description,
@@ -47,9 +54,7 @@ const CreateQuiz: React.FC = () => {
   useEffect(() => {
     if (!submitted) return;
     const sub = client.models.Quiz.onCreate({
-      filter: {
-        id: { eq: quizId },
-      },
+      filter: { id: { eq: quizId } },
     }).subscribe({
       next: (event) => {
         console.log('Quiz created event received:', event);

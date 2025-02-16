@@ -8,18 +8,27 @@ import {
   ListItem,
   ListItemText,
   IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
 } from '@mui/material';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
+import FileCopyIcon from '@mui/icons-material/FileCopy';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useNavigate } from 'react-router-dom';
 
 const client = generateClient<Schema>();
 
 const Home: React.FC = () => {
   const [quizzes, setQuizzes] = useState<Array<Schema['Quiz']['type']>>([]);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedQuiz, setSelectedQuiz] = useState<
+    Schema['Quiz']['type'] | null
+  >(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,7 +36,6 @@ const Home: React.FC = () => {
     const subscription = client.models.Quiz.observeQuery().subscribe({
       next: (data) => {
         const sortedItems = [...data.items].sort((a, b) => {
-          // Adjust the field name if necessary (e.g. updatedAt)
           return (
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
@@ -45,6 +53,30 @@ const Home: React.FC = () => {
     } catch (error) {
       console.error('Error deleting quiz:', error);
     }
+  };
+
+  const handleClone = (quiz: Schema['Quiz']['type']) => {
+    // Navigate to the create quiz page with pre-filled data from the cloned quiz.
+    navigate('/create', {
+      state: {
+        prompt: quiz.prompt, // using the quiz's prompt value
+        knowledgeFileKey: quiz.knowledgeFileKey,
+        numQuestions: quiz.questions.length, // clone number of questions based on quiz.questions
+      },
+    });
+  };
+
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    quiz: Schema['Quiz']['type'],
+  ) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedQuiz(quiz);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedQuiz(null);
   };
 
   return (
@@ -82,29 +114,73 @@ const Home: React.FC = () => {
                 }}
               />
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton
-                aria-label="attempt"
-                onClick={() => navigate(`/quiz/${quiz.id}`)}
-              >
-                <PlayArrowIcon />
-              </IconButton>
-              <IconButton
-                aria-label="edit"
-                onClick={() => navigate(`/edit/${quiz.id}`)}
-              >
-                <EditIcon />
-              </IconButton>
-              <IconButton
-                aria-label="delete"
-                onClick={() => handleDelete(quiz.id)}
-              >
-                <DeleteIcon />
-              </IconButton>
-            </Box>
+            <IconButton
+              aria-label="more"
+              onClick={(event) => handleMenuOpen(event, quiz)}
+            >
+              <MoreVertIcon />
+            </IconButton>
           </ListItem>
         ))}
       </List>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            if (selectedQuiz) navigate(`/quiz/${selectedQuiz.id}`);
+          }}
+        >
+          <ListItemIcon>
+            <PlayArrowIcon fontSize="small" />
+          </ListItemIcon>
+          Attempt
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            if (selectedQuiz) handleClone(selectedQuiz);
+          }}
+        >
+          <ListItemIcon>
+            <FileCopyIcon fontSize="small" />
+          </ListItemIcon>
+          Clone
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            if (selectedQuiz) navigate(`/edit/${selectedQuiz.id}`);
+          }}
+        >
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            if (selectedQuiz) handleDelete(selectedQuiz.id);
+          }}
+        >
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          Delete
+        </MenuItem>
+      </Menu>
     </Container>
   );
 };
