@@ -31,7 +31,7 @@ const QuizAttempt: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [phase, setPhase] = useState<Phase>('overview');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [previewTimer, setPreviewTimer] = useState<number>(0);
+  const [_previewTimer, setPreviewTimer] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
