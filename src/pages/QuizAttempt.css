@@ -51,3 +51,163 @@
   min-height: 100vh; /* ensures it covers the full viewport height */
   padding: 1rem; /* optional, for some spacing */
 }
+
+/* Score header styling */
+.score-appbar {
+  margin-bottom: 16px; /* equivalent to mb:2 */
+}
+
+.score-title {
+  flex-grow: 1;
+}
+
+/* Coin icon styling */
+.coin-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+}
+
+/* LinearProgress styling */
+.custom-linear-progress {
+  width: 150%;
+  height: 20px !important;
+  background-color: transparent !important;
+  border-radius: 10px !important;
+}
+
+.custom-linear-progress .MuiLinearProgress-bar {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #ff4081, #536dfe) !important;
+  transition: width 0.5s ease-out !important;
+}
+
+/* Container for answer cards */
+.answer-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Base styling for answer cards */
+.answer-card {
+  width: calc(50% - 8px);
+  transition: transform 0.3s, box-shadow 0.3s;
+  border: 1px solid #ccc;
+  box-shadow: none;
+}
+
+.answer-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Styling when an answer is selected */
+.answer-card.selected {
+  border: 2px solid green;
+  box-shadow: 0 4px 8px rgba(0, 200, 83, 0.4);
+}
+
+/* Dim unselected answer cards */
+.answer-card.unselected-dim {
+  opacity: 0.5;
+}
+
+/* Progress container centering */
+.progress-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+/* Container for points display */
+.points-container {
+  margin-top: 8px;
+  position: relative;
+  height: 30px;
+}
+
+/* Container for explanation cards */
+.explanation-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Base styling for explanation cards */
+.explanation-card {
+  width: calc(50% - 8px);
+  margin-bottom: 8px;
+  min-height: 80px;
+  position: relative;
+}
+
+/* Correct answer styling */
+.explanation-card.correct {
+  border: 2px solid green;
+  background-color: #e8f5e9;
+}
+
+/* Incorrect answer styling */
+.explanation-card.incorrect {
+  border: 2px solid red;
+  background-color: #ffebee;
+}
+
+/* Overlay for selected answer icons */
+.icon-overlay {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 1;
+}
+
+/* Optional icon styles */
+.correct-icon {
+  color: green;
+  font-size: 24px;
+}
+
+.incorrect-icon {
+  color: red;
+  font-size: 24px;
+}
+
+/* Header container styling */
+.quiz-header {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.coin-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+}
+
+/* Give the preview section a fixed height and a flex layout */
+.preview-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Let the container below the progress bar take up the remaining space */
+.get-ready-container {
+  flex-grow: 1;
+  display: flex;
+  align-items: center; /* vertical centering */
+  justify-content: center; /* horizontal centering */
+}
+
+/* Style the "Get Ready!" text with the blue color from the progress bar */
+.get-ready-text {
+  color: #ff4081;
+  padding-top: 2rem;
+}

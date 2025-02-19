@@ -17,7 +17,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import confetti from 'canvas-confetti';
-import './QuizAttempt.css';
+import './QuizAttempt.css'; // External CSS file
 
 const client = generateClient<Schema>();
 
@@ -31,7 +31,7 @@ const QuizAttempt: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [phase, setPhase] = useState<Phase>('overview');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [_previewTimer, setPreviewTimer] = useState<number>(0);
+  const [previewTimer, setPreviewTimer] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
@@ -41,8 +41,6 @@ const QuizAttempt: React.FC = () => {
   const previewStartTimeRef = useRef<number>(0);
 
   // State to track available points in discrete steps.
-  // maxPointsState is the current available points.
-  // oldMaxPoints is used to animate the previous value.
   const [maxPointsState, setMaxPointsState] = useState<number | null>(null);
   const [oldMaxPoints, setOldMaxPoints] = useState<number | null>(null);
 
@@ -103,7 +101,7 @@ const QuizAttempt: React.FC = () => {
     });
   };
 
-  // Play cheering sound (ensure cheer.mp3 exists in your public folder)
+  // Play cheering sound
   const playCorrectSound = () => {
     const audio = new Audio('/correct.mp3');
     audio.play().catch((error) => {
@@ -146,7 +144,7 @@ const QuizAttempt: React.FC = () => {
   useEffect(() => {
     if (phase === 'preview' && currentQuestion) {
       const totalPreviewTime =
-        (currentQuestion.previewTime || defaultPreviewTime) * 1000; // total time in ms
+        (currentQuestion.previewTime || defaultPreviewTime) * 1000;
       previewStartTimeRef.current = Date.now();
 
       const updatePreviewProgress = () => {
@@ -164,11 +162,11 @@ const QuizAttempt: React.FC = () => {
     }
   }, [phase, currentQuestion]);
 
-  // Smooth progress bar update using requestAnimationFrame
+  // Smooth progress bar update using requestAnimationFrame for question phase
   useEffect(() => {
     if (phase === 'question' && currentQuestion) {
       const totalTime =
-        (currentQuestion.answerTime || defaultAnswerTime) * 1000; // total time in ms
+        (currentQuestion.answerTime || defaultAnswerTime) * 1000;
       questionStartTimeRef.current = Date.now();
 
       const animate = () => {
@@ -196,11 +194,10 @@ const QuizAttempt: React.FC = () => {
     if (phase === 'question' && currentQuestion) {
       const maxForQuestion = currentQuestion.maxPoints || defaultPoints;
       const totalTime =
-        (currentQuestion.answerTime || defaultAnswerTime) * 1000; // in ms
+        (currentQuestion.answerTime || defaultAnswerTime) * 1000;
       const stepDuration = totalTime / nSteps;
       const elapsed = Date.now() - questionStartTimeRef.current;
       const stepsPassed = Math.floor(elapsed / stepDuration);
-      // Decrease points in steps; remain constant until a step boundary is reached.
       const newMax = Math.max(
         maxForQuestion - stepsPassed * (maxForQuestion / nSteps),
         0,
@@ -212,7 +209,7 @@ const QuizAttempt: React.FC = () => {
         setMaxPointsState(newMax);
         setTimeout(() => {
           setOldMaxPoints(null);
-        }, 500); // animation duration matches CSS
+        }, 500);
       }
     }
   }, [progress, phase, currentQuestion, maxPointsState]);
@@ -232,7 +229,7 @@ const QuizAttempt: React.FC = () => {
     if (answerId === currentQuestion?.correctAnswerId) {
       triggerConfetti();
       playCorrectSound();
-      const stepDuration = totalTime / nSteps / 1000; // in seconds
+      const stepDuration = totalTime / nSteps / 1000;
       const stepsPassed = Math.floor(timeTaken / stepDuration);
       const maxForQuestion = currentQuestion?.maxPoints || defaultPoints;
       const deductionPerStep = maxForQuestion / nSteps;
@@ -301,32 +298,24 @@ const QuizAttempt: React.FC = () => {
     );
   }
 
-  // Header that shows (when quiz is in progress) the question number on the left and points on the right.
-  const renderHeader = () => {
-    if (phase !== 'overview') {
-      return (
-        <Box className="quiz-header">
-          {phase !== 'finished' && (
-            <Typography variant="h6">
-              Question {currentQuestionIndex + 1} of {quiz.questions.length}
-            </Typography>
-          )}
-          <Box display="flex" alignItems="center">
-            <img src="/coin.png" alt="coin" className="coin-icon" />
-            <Typography variant="h6" sx={{ ml: 1 }}>
-              {score}
-            </Typography>
-          </Box>
+  const renderScoreDisplay = () => (
+    <AppBar position="static" color="default" className="score-appbar">
+      <Toolbar>
+        <Typography variant="h6" className="score-title">
+          {quiz.title}
+        </Typography>
+        <Box display="flex" alignItems="center">
+          <img src="/coin.png" alt="coin" className="coin-icon" />
+          <Typography variant="h6">{score}</Typography>
         </Box>
-      );
-    }
-    return null;
-  };
+      </Toolbar>
+    </AppBar>
+  );
 
   return (
     <div className="quiz-attempt-wrapper">
       <Container maxWidth="md" className="quiz-container">
-        {renderHeader()}
+        {phase !== 'overview' && renderScoreDisplay()}
 
         {phase === 'overview' && (
           <Box mt={4}>
@@ -345,7 +334,10 @@ const QuizAttempt: React.FC = () => {
         )}
 
         {phase === 'preview' && currentQuestion && (
-          <Box mt={4} className="preview-section">
+          <Box mt={4}>
+            <Typography variant="h5" gutterBottom>
+              Question
+            </Typography>
             <Typography variant="body1" gutterBottom>
               {currentQuestion.text}
             </Typography>
@@ -356,16 +348,17 @@ const QuizAttempt: React.FC = () => {
                 className="custom-linear-progress"
               />
             </Box>
-            <Box className="get-ready-container">
-              <Typography variant="h5" className="get-ready-text">
-                Get Ready!
-              </Typography>
-            </Box>
+            <Typography variant="h5" gutterBottom align="center">
+              Get Ready!
+            </Typography>
           </Box>
         )}
 
         {phase === 'question' && currentQuestion && (
           <Box mt={4} className="fade-in">
+            <Typography variant="h5" gutterBottom>
+              Question
+            </Typography>
             <Typography variant="body1" gutterBottom>
               {currentQuestion.text}
             </Typography>
@@ -394,7 +387,6 @@ const QuizAttempt: React.FC = () => {
                   ),
               )}
             </Box>
-            {/* Smooth progress bar below the answer options */}
             <Box mt={2} className="progress-container">
               <LinearProgress
                 variant="determinate"
@@ -402,7 +394,6 @@ const QuizAttempt: React.FC = () => {
                 className="custom-linear-progress"
               />
             </Box>
-            {/* Display "points available" below the progress bar */}
             <Box className="points-container">
               <Typography
                 variant="subtitle1"
@@ -429,7 +420,6 @@ const QuizAttempt: React.FC = () => {
             <Typography variant="h5" gutterBottom>
               Explanation
             </Typography>
-            {/* Display the explanation text */}
             <Typography variant="body1" gutterBottom>
               {currentQuestion.explanation}
             </Typography>
@@ -443,7 +433,6 @@ const QuizAttempt: React.FC = () => {
                 }`;
                 return (
                   <Card key={answer.id} className={cardClass}>
-                    {/* Overlay icon on the selected answer */}
                     {isSelected && (
                       <Box className="icon-overlay">
                         {isCorrect ? (
