@@ -7,8 +7,6 @@ import {
   Card,
   CardActionArea,
   CardContent,
-  AppBar,
-  Toolbar,
   LinearProgress,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
