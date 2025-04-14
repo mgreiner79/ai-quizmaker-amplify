@@ -1,3 +1,5 @@
+// amplify/functions/quizGenerator/handler.ts
+
 import { Amplify } from 'aws-amplify';
 import OpenAI from 'openai';
 import { generateClient } from 'aws-amplify/data';
