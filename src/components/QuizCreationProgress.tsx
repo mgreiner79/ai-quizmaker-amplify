@@ -1,3 +1,4 @@
+// src/components/QuizCreationProgress.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import Loader from './loaders/TetrominoLoader';

@@ -1,3 +1,4 @@
+// src/pages/EditQuiz.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -54,7 +55,8 @@ const EditQuiz: React.FC = () => {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const fetchedQuiz = (await client.models.Quiz.get({ id: quizId! })).data;
+        const fetchedQuiz = (await client.models.Quiz.get({ id: quizId! }))
+          .data;
         setQuiz(fetchedQuiz as EditableQuiz);
       } catch (error) {
         console.error('Error fetching quiz:', error);
@@ -80,7 +82,7 @@ const EditQuiz: React.FC = () => {
   const handleQuestionChange = (
     index: number,
     field: keyof EditableQuestion,
-    value: any
+    value: any,
   ) => {
     if (quiz) {
       const updatedQuestions = [...quiz.questions];
@@ -99,7 +101,7 @@ const EditQuiz: React.FC = () => {
     qIndex: number,
     aIndex: number,
     field: keyof EditableAnswer,
-    value: any
+    value: any,
   ) => {
     if (quiz) {
       const updatedQuestions = [...quiz.questions];
@@ -175,10 +177,12 @@ const EditQuiz: React.FC = () => {
                 fullWidth
                 margin="normal"
                 value={question.text}
-                onChange={(e) => handleQuestionChange(qIndex, 'text', e.target.value)}
+                onChange={(e) =>
+                  handleQuestionChange(qIndex, 'text', e.target.value)
+                }
               />
               <Grid2 container spacing={2}>
-                <Grid2 >
+                <Grid2>
                   <TextField
                     label="Preview Time (sec)"
                     type="number"
@@ -186,11 +190,15 @@ const EditQuiz: React.FC = () => {
                     margin="normal"
                     value={question.previewTime}
                     onChange={(e) =>
-                      handleQuestionChange(qIndex, 'previewTime', parseInt(e.target.value))
+                      handleQuestionChange(
+                        qIndex,
+                        'previewTime',
+                        parseInt(e.target.value),
+                      )
                     }
                   />
                 </Grid2>
-                <Grid2 >
+                <Grid2>
                   <TextField
                     label="Answer Time (sec)"
                     type="number"
@@ -198,11 +206,15 @@ const EditQuiz: React.FC = () => {
                     margin="normal"
                     value={question.answerTime}
                     onChange={(e) =>
-                      handleQuestionChange(qIndex, 'answerTime', parseInt(e.target.value))
+                      handleQuestionChange(
+                        qIndex,
+                        'answerTime',
+                        parseInt(e.target.value),
+                      )
                     }
                   />
                 </Grid2>
-                <Grid2 >
+                <Grid2>
                   <TextField
                     label="Max Points"
                     type="number"
@@ -210,7 +222,11 @@ const EditQuiz: React.FC = () => {
                     margin="normal"
                     value={question.maxPoints}
                     onChange={(e) =>
-                      handleQuestionChange(qIndex, 'maxPoints', parseInt(e.target.value))
+                      handleQuestionChange(
+                        qIndex,
+                        'maxPoints',
+                        parseInt(e.target.value),
+                      )
                     }
                   />
                 </Grid2>
@@ -221,7 +237,9 @@ const EditQuiz: React.FC = () => {
                 margin="normal"
                 multiline
                 value={question.explanation}
-                onChange={(e) => handleQuestionChange(qIndex, 'explanation', e.target.value)}
+                onChange={(e) =>
+                  handleQuestionChange(qIndex, 'explanation', e.target.value)
+                }
               />
               <Box mt={2}>
                 <Typography variant="subtitle1">Answers</Typography>
@@ -233,7 +251,12 @@ const EditQuiz: React.FC = () => {
                       margin="normal"
                       value={answer.text}
                       onChange={(e) =>
-                        handleAnswerChange(qIndex, aIndex, 'text', e.target.value)
+                        handleAnswerChange(
+                          qIndex,
+                          aIndex,
+                          'text',
+                          e.target.value,
+                        )
                       }
                     />
                     <TextField
@@ -242,7 +265,12 @@ const EditQuiz: React.FC = () => {
                       margin="normal"
                       value={answer.message}
                       onChange={(e) =>
-                        handleAnswerChange(qIndex, aIndex, 'message', e.target.value)
+                        handleAnswerChange(
+                          qIndex,
+                          aIndex,
+                          'message',
+                          e.target.value,
+                        )
                       }
                     />
                   </Box>
@@ -253,7 +281,12 @@ const EditQuiz: React.FC = () => {
         ))}
       </Box>
       <Box mt={4} display="flex" justifyContent="flex-end">
-        <Button variant="contained" color="primary" onClick={handleSave} disabled={saving}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSave}
+          disabled={saving}
+        >
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>
       </Box>
