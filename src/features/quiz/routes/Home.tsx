@@ -1,5 +1,5 @@
 // src/pages/Home.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Button,
@@ -13,8 +13,6 @@ import {
   MenuItem,
   ListItemIcon,
 } from '@mui/material';
-import client from '../lib/amplifyClient';
-import type { Schema } from '../../amplify/data/resource';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
@@ -22,52 +20,37 @@ import FileCopyIcon from '@mui/icons-material/FileCopy';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useNavigate } from 'react-router-dom';
 
-const Home: React.FC = () => {
-  const [quizzes, setQuizzes] = useState<Array<Schema['Quiz']['type']>>([]);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedQuiz, setSelectedQuiz] = useState<
-    Schema['Quiz']['type'] | null
-  >(null);
-  const navigate = useNavigate();
+import { useQuizzes, type Quiz } from '@/features/quiz/hooks/useQuizzes';
+import { deleteQuiz } from '@/features/quiz/api/quizzes';
 
-  useEffect(() => {
-    // Subscribe to the Quiz model; any changes update the list in real time.
-    const subscription = client.models.Quiz.observeQuery().subscribe({
-      next: (data) => {
-        const sortedItems = [...data.items].sort((a, b) => {
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        });
-        setQuizzes(sortedItems);
-      },
-      error: (err) => console.error(err),
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+const Home: React.FC = () => {
+  const { quizzes, loading, error } = useQuizzes();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const navigate = useNavigate();
 
   const handleDelete = async (quizId: string) => {
     try {
-      await client.models.Quiz.delete({ id: quizId });
+      await deleteQuiz(quizId);
     } catch (error) {
       console.error('Error deleting quiz:', error);
     }
   };
 
-  const handleClone = (quiz: Schema['Quiz']['type']) => {
-    // Navigate to the create quiz page with pre-filled data from the cloned quiz.
+  const handleClone = (quiz: Quiz) => {
     navigate('/create', {
       state: {
-        prompt: quiz.prompt, // using the quiz's prompt value
+        prompt: quiz.prompt,
         knowledgeFileKey: quiz.knowledgeFileKey,
-        numQuestions: quiz.questions.length, // clone number of questions based on quiz.questions
+        numQuestions: quiz.questions.length,
       },
     });
   };
 
   const handleMenuOpen = (
     event: React.MouseEvent<HTMLButtonElement>,
-    quiz: Schema['Quiz']['type'],
+    quiz: Quiz,
   ) => {
     setAnchorEl(event.currentTarget);
     setSelectedQuiz(quiz);
@@ -96,32 +79,39 @@ const Home: React.FC = () => {
           Create New Quiz
         </Button>
       </Box>
-      <List>
-        {quizzes.map((quiz) => (
-          <ListItem
-            key={quiz.id}
-            sx={{ display: 'flex', alignItems: 'center' }}
-          >
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <ListItemText
-                primary={quiz.title}
-                secondary={quiz.description}
-                sx={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              />
-            </Box>
-            <IconButton
-              aria-label="more"
-              onClick={(event) => handleMenuOpen(event, quiz)}
+
+      {loading && <Typography>Loading...</Typography>}
+      {error && <Typography color="error">Failed to load quizzes.</Typography>}
+
+      {!loading && !error && (
+        <List>
+          {quizzes.map((quiz) => (
+            <ListItem
+              key={quiz.id}
+              sx={{ display: 'flex', alignItems: 'center' }}
             >
-              <MoreVertIcon />
-            </IconButton>
-          </ListItem>
-        ))}
-      </List>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <ListItemText
+                  primary={quiz.title}
+                  secondary={quiz.description}
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                />
+              </Box>
+              <IconButton
+                aria-label="more"
+                onClick={(event) => handleMenuOpen(event, quiz)}
+              >
+                <MoreVertIcon />
+              </IconButton>
+            </ListItem>
+          ))}
+        </List>
+      )}
+
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
