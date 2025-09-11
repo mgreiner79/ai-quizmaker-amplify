@@ -13,7 +13,7 @@ import {
   MenuItem,
   ListItemIcon,
 } from '@mui/material';
-import { generateClient } from 'aws-amplify/data';
+import client from '../lib/amplifyClient';
 import type { Schema } from '../../amplify/data/resource';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -21,8 +21,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useNavigate } from 'react-router-dom';
-
-const client = generateClient<Schema>();
 
 const Home: React.FC = () => {
   const [quizzes, setQuizzes] = useState<Array<Schema['Quiz']['type']>>([]);

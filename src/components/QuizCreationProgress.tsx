@@ -2,10 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import Loader from './loaders/TetrominoLoader';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
-
-const client = generateClient<Schema>();
+import client from '../lib/amplifyClient';
 
 interface QuizProgressEvent {
   id: string;

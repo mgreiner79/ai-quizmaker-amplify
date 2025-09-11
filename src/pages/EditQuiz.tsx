@@ -11,10 +11,7 @@ import {
   Grid2,
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
-
-const client = generateClient<Schema>();
+import client from '../lib/amplifyClient';
 
 // Define interfaces for local editing of quiz data.
 interface EditableAnswer {

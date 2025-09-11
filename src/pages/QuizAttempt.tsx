@@ -13,12 +13,10 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { useParams, useNavigate } from 'react-router-dom';
-import { generateClient } from 'aws-amplify/data';
+import client from '../lib/amplifyClient';
 import type { Schema } from '../../amplify/data/resource';
 import confetti from 'canvas-confetti';
 import './QuizAttempt.css';
-
-const client = generateClient<Schema>();
 
 type Phase = 'overview' | 'preview' | 'question' | 'explanation' | 'finished';
 

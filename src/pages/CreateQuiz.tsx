@@ -9,13 +9,10 @@ import {
   InputLabel,
 } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import client from '../lib/amplifyClient';
 import QuizCreationProgress from '../components/QuizCreationProgress';
 import { useNavigate, useLocation } from 'react-router-dom';
 import KnowledgeFileModal from '../components/KnowledgeFileModal';
-
-const client = generateClient<Schema>();
 
 const CreateQuiz: React.FC = () => {
   const navigate = useNavigate();
