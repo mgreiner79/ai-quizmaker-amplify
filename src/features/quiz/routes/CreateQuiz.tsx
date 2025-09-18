@@ -1,5 +1,5 @@
 // src/pages/CreateQuiz.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Box,
@@ -9,16 +9,17 @@ import {
   InputLabel,
 } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
-import client from '../lib/amplifyClient';
-import QuizCreationProgress from '../components/QuizCreationProgress';
 import { useNavigate, useLocation } from 'react-router-dom';
-import KnowledgeFileModal from '../components/KnowledgeFileModal';
+
+import { useQuizCreation } from '@/features/quiz/hooks/useQuizCreation';
+import QuizCreationProgress from '@/features/quiz/components/QuizCreationProgress';
+import KnowledgeFileModal from '@/features/quiz/components/KnowledgeFileModal';
 
 const CreateQuiz: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Prefill the form if state was passed (e.g., when cloning)
+  // Prefill for cloning flows
   const initialPrompt = location.state?.prompt ?? '';
   const initialNumQuestions = location.state?.numQuestions ?? 5;
   const initialKnowledgeFileKey = location.state?.knowledgeFileKey ?? '';
@@ -29,40 +30,25 @@ const CreateQuiz: React.FC = () => {
   const [knowledgeFileKey, setKnowledgeFileKey] = useState(
     initialKnowledgeFileKey,
   );
-  const [submitted, setSubmitted] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+
+  const { start, submitted, loading, error, message } = useQuizCreation(
+    quizId,
+    () => {
+      navigate(`/edit/${quizId}`);
+    },
+  );
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setSubmitted(true);
-    try {
-      await client.mutations.quizGenerator({
-        quizId,
-        prompt: description,
-        numQuestions,
-        knowledge: knowledgeFileKey,
-      });
-    } catch (error) {
-      setSubmitted(false);
-      console.error('Error creating quiz:', error);
-    }
-  };
 
-  // Subscribe to the quiz creation event.
-  useEffect(() => {
-    if (!submitted) return;
-    const sub = client.models.Quiz.onCreate({
-      filter: { id: { eq: quizId } },
-    }).subscribe({
-      next: (event) => {
-        console.log('Quiz created event received:', event);
-        // Redirect once the quiz creation event is received.
-        navigate(`/edit/${quizId}`);
-      },
-      error: (error) => console.warn('Subscription error:', error),
+    await start({
+      quizId,
+      prompt: description,
+      numQuestions,
+      knowledge: knowledgeFileKey || undefined,
     });
-    return () => sub.unsubscribe();
-  }, [submitted, quizId, navigate]);
+  };
 
   return (
     <Container maxWidth="sm">
@@ -71,6 +57,13 @@ const CreateQuiz: React.FC = () => {
           <Typography variant="h4" gutterBottom>
             Create New Quiz
           </Typography>
+
+          {error && (
+            <Typography color="error" gutterBottom>
+              Error creating quiz. Please try again.
+            </Typography>
+          )}
+
           <form onSubmit={handleSubmit}>
             <TextField
               label="Quiz Description"
@@ -80,7 +73,7 @@ const CreateQuiz: React.FC = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
-              disabled={submitted}
+              disabled={loading}
             />
             <TextField
               label="Number of Questions"
@@ -90,7 +83,7 @@ const CreateQuiz: React.FC = () => {
               value={numQuestions}
               onChange={(e) => setNumQuestions(parseInt(e.target.value))}
               required
-              disabled={submitted}
+              disabled={loading}
             />
             <Box mt={2}>
               <InputLabel>Knowledge File (optional)</InputLabel>
@@ -98,7 +91,7 @@ const CreateQuiz: React.FC = () => {
                 variant="outlined"
                 onClick={() => setOpenModal(true)}
                 sx={{ mt: 1 }}
-                disabled={submitted}
+                disabled={loading}
               >
                 {knowledgeFileKey
                   ? `Change File (${knowledgeFileKey.split('/').pop()})`
@@ -110,16 +103,17 @@ const CreateQuiz: React.FC = () => {
                 type="submit"
                 variant="contained"
                 color="primary"
-                disabled={submitted}
+                disabled={loading}
               >
-                Create
+                {loading ? 'Starting…' : 'Create'}
               </Button>
             </Box>
           </form>
         </Box>
       )}
 
-      {submitted && <QuizCreationProgress quizId={quizId} />}
+      {submitted && <QuizCreationProgress message={message} />}
+
       <KnowledgeFileModal
         open={openModal}
         onClose={() => setOpenModal(false)}

@@ -75,6 +75,31 @@ const getKnowledgeText = async (knowledge: string): Promise<string> => {
   }
 };
 
+type ProgressPatch = {
+  status?: 'WARMING_UP' | 'EXTRACTING' | 'GENERATING' | 'CREATED' | 'ERROR';
+  message?: string;
+  errorText?: string;
+};
+
+async function upsertProgress(
+  client: ReturnType<typeof generateClient<Schema>>,
+  quizId: string,
+  patch: ProgressPatch,
+) {
+  console.log(`Upserting progress for quizId ${quizId}:`, patch);
+  try {
+    await client.models.CreationProgress.update({ id: quizId, ...patch });
+  } catch {
+    await client.models.CreationProgress.create({
+      id: quizId,
+      status: 'WARMING_UP',
+      message: 'Warming up',
+      errorText: '',
+      ...patch,
+    });
+  }
+}
+
 /**
  * Main handler for quiz generation.
  */
@@ -95,32 +120,29 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
   const token = event.request.headers.authorization;
   const client = generateClient<Schema>({ authToken: token });
 
-  // Helper: Publish progress messages.
-  const publishProgress = async (message: string): Promise<void> => {
-    console.log('Progress:', message);
-    try {
-      await client.models.CreationProgress.create({
-        correlationId: quizId,
-        message,
-      });
-    } catch (error) {
-      console.error(`Failed to publish progress "${message}":`, error);
-      // Optionally, you can choose to throw here, but we log and continue.
-    }
-  };
-
   try {
     // Step 1: Warm up.
-    await publishProgress('Warming up');
+    await upsertProgress(client, quizId, {
+      status: 'WARMING_UP',
+      message: 'Warming up',
+    });
 
     // Step 2: Extract knowledge (if provided).
     let knowledgeText = '';
     if (knowledge) {
-      await publishProgress('Extracting knowledge');
+      await upsertProgress(client, quizId, {
+        status: 'EXTRACTING',
+        message: 'Extracting knowledge',
+      });
       knowledgeText = await getKnowledgeText(knowledge);
     }
 
     // Step 3: Build the prompt for OpenAI.
+    await upsertProgress(client, quizId, {
+      status: 'GENERATING',
+      message: 'Generating quiz',
+    });
+
     const compiledPrompt = `
       You are a quiz generator. Given the following knowledge:
       ${knowledgeText}
@@ -147,8 +169,6 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
       Respond with valid JSON.
     `;
 
-    await publishProgress('Generating quiz');
-
     // Step 4: Request quiz generation from OpenAI.
     const chatCompletion = await llmClient.chat.completions.create({
       messages: [{ role: 'system', content: compiledPrompt }],
@@ -160,11 +180,16 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
       },
     });
 
-    const messageContent = chatCompletion.choices[0].message.content;
-    let parsedQuiz;
+    const raw = chatCompletion.choices[0].message.content ?? '{}';
+    let parsedQuiz: any;
     try {
-      parsedQuiz = JSON.parse(messageContent ?? '{}');
+      parsedQuiz = JSON.parse(raw);
     } catch (parseError) {
+      await upsertProgress(client, quizId, {
+        status: 'ERROR',
+        message: 'Error parsing quiz JSON',
+        errorText: 'Failed to parse generated quiz JSON.',
+      });
       console.error('Error parsing quiz JSON:', parseError);
       throw new Error('Failed to parse generated quiz JSON.');
     }
@@ -174,6 +199,11 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     if (event.identity && 'sub' in event.identity) {
       ownerSub = event.identity.sub;
     } else {
+      await upsertProgress(client, quizId, {
+        status: 'ERROR',
+        message: 'Error determining user',
+        errorText: "'sub' not found in event.identity",
+      });
       throw new Error(
         "Could not determine the user who triggered this function. 'sub' not found in event.identity.",
       );
@@ -194,16 +224,28 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     });
 
     if (newQuiz.errors) {
+      await upsertProgress(client, quizId, {
+        status: 'ERROR',
+        message: 'Error creating quiz',
+        errorText: JSON.stringify(newQuiz.errors),
+      });
       console.error('Quiz creation errors:', newQuiz.errors);
       throw new Error('Quiz creation failed.');
     }
 
-    await publishProgress('Quiz generation complete');
-
+    await upsertProgress(client, quizId, {
+      status: 'CREATED',
+      message: 'Quiz generation complete',
+    });
     console.log('Finished creating quiz:', newQuiz);
 
     return newQuiz.data;
   } catch (error) {
+    await upsertProgress(client, quizId, {
+      status: 'ERROR',
+      message: 'Error during quiz generation',
+      errorText: error instanceof Error ? error.message : 'Unknown error',
+    });
     console.error('Error in quizGenerator handler:', error);
     throw error;
   }
