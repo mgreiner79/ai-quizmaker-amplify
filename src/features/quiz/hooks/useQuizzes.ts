@@ -18,7 +18,7 @@ export function useQuizzes(): State {
   useEffect(() => {
     const sub = watchQuizzes().subscribe({
       next: ({ items }) => {
-        setItems(items as Quiz[]);
+        setItems([...(items as Quiz[])]);
         setLoading(false);
       },
       error: (err) => {
