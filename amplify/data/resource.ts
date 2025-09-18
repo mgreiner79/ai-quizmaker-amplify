@@ -22,9 +22,9 @@ const schema = a
     }),
     Question: a.customType({
       text: a.string().required(),
-      previewTime: a.integer(),
-      answerTime: a.integer(),
-      maxPoints: a.integer(),
+      previewTime: a.integer().required(),
+      answerTime: a.integer().required(),
+      maxPoints: a.integer().required(),
       correctAnswerId: a.string().required(),
       explanation: a.string().required(),
       answers: a.ref('Answer').array().required(),
@@ -51,8 +51,16 @@ const schema = a
 
     CreationProgress: a
       .model({
-        correlationId: a.string(),
+        id: a.id().required(),
+        status: a.enum([
+          'WARMING_UP',
+          'EXTRACTING',
+          'GENERATING',
+          'CREATED',
+          'ERROR',
+        ]),
         message: a.string(),
+        errorText: a.string(),
       })
       .authorization((allow) => [
         allow.owner(),
