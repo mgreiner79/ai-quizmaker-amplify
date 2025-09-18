@@ -1,4 +1,4 @@
-// src/pages/EditQuiz.tsx
+// src/features/quiz/routes/EditQuiz.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -9,135 +9,138 @@ import {
   Card,
   CardContent,
   Grid2,
+  Alert,
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
-import client from '../lib/amplifyClient';
 
-// Define interfaces for local editing of quiz data.
-interface EditableAnswer {
-  id: string;
-  text: string;
-  message: string;
-}
-
-interface EditableQuestion {
-  text: string;
-  previewTime: number;
-  answerTime: number;
-  maxPoints: number;
-  correctAnswerId: string;
-  explanation: string;
-  answers: EditableAnswer[];
-}
-
-interface EditableQuiz {
-  id: string;
-  title: string;
-  description: string;
-  previewTime: number;
-  answerTime: number;
-  maxPoints: number;
-  questions: EditableQuestion[];
-  knowledgeFileKey: string;
-  owner: string;
-}
+import { useQuiz } from '@/features/quiz/hooks/useQuiz';
+import { useUpdateQuiz } from '@/features/quiz/hooks/useUpdateQuiz';
+import type {
+  Answer,
+  QuestionDraft,
+  Quiz,
+  QuizDraft,
+} from '@/features/quiz/types';
+import { toQuizDraft } from '@/features/quiz/types';
 
 const EditQuiz: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
-  const [quiz, setQuiz] = useState<EditableQuiz | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
+
+  const { quiz, loading, error, refetch } = useQuiz(quizId);
+  const { save, saving, error: saveError } = useUpdateQuiz();
+
+  const [draft, setDraft] = useState<QuizDraft | null>(null);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    const fetchQuiz = async () => {
-      try {
-        const fetchedQuiz = (await client.models.Quiz.get({ id: quizId! }))
-          .data;
-        setQuiz(fetchedQuiz as EditableQuiz);
-      } catch (error) {
-        console.error('Error fetching quiz:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (quiz && !dirty) setDraft(toQuizDraft(quiz));
+  }, [quiz, dirty]);
 
-    if (quizId) {
-      fetchQuiz();
-    }
-  }, [quizId]);
+  const disabled = loading || saving || !draft;
 
-  const handleQuizChange = (field: keyof EditableQuiz, value: any) => {
-    if (quiz) {
-      setQuiz({
-        ...quiz,
-        [field]: value,
-      });
-    }
-  };
-
-  const handleQuestionChange = (
-    index: number,
-    field: keyof EditableQuestion,
-    value: any,
+  const handleQuizChange = <K extends keyof QuizDraft>(
+    field: K,
+    value: QuizDraft[K],
   ) => {
-    if (quiz) {
-      const updatedQuestions = [...quiz.questions];
-      updatedQuestions[index] = {
-        ...updatedQuestions[index],
-        [field]: value,
-      };
-      setQuiz({
-        ...quiz,
-        questions: updatedQuestions,
-      });
-    }
+    if (!draft) return;
+    setDirty(true);
+    setDraft({
+      ...draft,
+      [field]: value,
+    });
   };
 
-  const handleAnswerChange = (
+  const handleQuestionChange = <
+    K extends Exclude<keyof QuestionDraft, 'answers'>,
+  >(
+    index: number,
+    field: K,
+    value: QuestionDraft[K],
+  ) => {
+    if (!draft) return;
+    setDirty(true);
+
+    const questions = draft.questions.slice();
+    const current = questions[index];
+    const patch = { [field]: value } as Pick<QuestionDraft, typeof field>;
+    const next: QuestionDraft = { ...current, ...patch };
+    questions[index] = next;
+    setDraft({ ...draft, questions });
+  };
+
+  const handleAnswerChange = <K extends keyof Answer>(
     qIndex: number,
     aIndex: number,
-    field: keyof EditableAnswer,
-    value: any,
+    field: K,
+    value: Answer[K],
   ) => {
-    if (quiz) {
-      const updatedQuestions = [...quiz.questions];
-      const updatedAnswers = [...updatedQuestions[qIndex].answers];
-      updatedAnswers[aIndex] = {
-        ...updatedAnswers[aIndex],
-        [field]: value,
-      };
-      updatedQuestions[qIndex] = {
-        ...updatedQuestions[qIndex],
-        answers: updatedAnswers,
-      };
-      setQuiz({
-        ...quiz,
-        questions: updatedQuestions,
-      });
-    }
+    if (!draft) return;
+    setDirty(true);
+    const questions = draft.questions.slice();
+    const answers = questions[qIndex].answers.slice();
+    answers[aIndex] = {
+      ...answers[aIndex],
+      [field]: value,
+    };
+    questions[qIndex] = {
+      ...questions[qIndex],
+      answers: answers,
+    };
+    setDraft({
+      ...draft,
+      questions,
+    });
   };
 
   const handleSave = async () => {
-    if (!quiz) return;
-    setSaving(true);
+    if (!draft) return;
     try {
       // Save the updated quiz back to the backend.
-      await client.models.Quiz.update(quiz);
+      await save(draft as Quiz);
+      setDirty(false);
       navigate('/');
     } catch (error) {
       console.error('Error saving quiz:', error);
-    } finally {
-      setSaving(false);
+      // error is shown via saveError Alert below
     }
   };
 
-  if (loading || !quiz) {
+  if (loading && !draft) {
     return (
       <Container>
         <Typography variant="h5" mt={4}>
           "Loading quiz..."
         </Typography>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <Box mt={4}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Failed to load quiz. Please try again.
+          </Alert>
+          <Button variant="contained" onClick={refetch}>
+            Retry
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
+
+  if (!draft) {
+    // Should be rare, but avoids rendering undefined values
+    return (
+      <Container>
+        <Typography variant="h6" mt={4}>
+          No quiz found.
+        </Typography>
+        <Button sx={{ mt: 2 }} onClick={() => navigate('/')}>
+          Back
+        </Button>
       </Container>
     );
   }
@@ -148,24 +151,33 @@ const EditQuiz: React.FC = () => {
         <Typography variant="h4" gutterBottom>
           Edit Quiz
         </Typography>
+
+        {saveError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Failed to save changes. Please try again.
+          </Alert>
+        )}
+
         <TextField
           label="Quiz Title"
           fullWidth
           margin="normal"
-          value={quiz.title}
+          value={draft.title}
           onChange={(e) => handleQuizChange('title', e.target.value)}
+          disabled={disabled}
         />
         <TextField
           label="Quiz Description"
           fullWidth
           margin="normal"
           multiline
-          value={quiz.description}
+          value={draft.description}
           onChange={(e) => handleQuizChange('description', e.target.value)}
+          disabled={disabled}
         />
       </Box>
       <Box>
-        {quiz.questions.map((question, qIndex) => (
+        {draft.questions.map((question, qIndex) => (
           <Card key={qIndex} variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6">Question {qIndex + 1}</Typography>
@@ -177,6 +189,7 @@ const EditQuiz: React.FC = () => {
                 onChange={(e) =>
                   handleQuestionChange(qIndex, 'text', e.target.value)
                 }
+                disabled={disabled}
               />
               <Grid2 container spacing={2}>
                 <Grid2>
@@ -193,6 +206,7 @@ const EditQuiz: React.FC = () => {
                         parseInt(e.target.value),
                       )
                     }
+                    disabled={disabled}
                   />
                 </Grid2>
                 <Grid2>
@@ -209,6 +223,7 @@ const EditQuiz: React.FC = () => {
                         parseInt(e.target.value),
                       )
                     }
+                    disabled={disabled}
                   />
                 </Grid2>
                 <Grid2>
@@ -225,6 +240,7 @@ const EditQuiz: React.FC = () => {
                         parseInt(e.target.value),
                       )
                     }
+                    disabled={disabled}
                   />
                 </Grid2>
               </Grid2>
@@ -237,6 +253,7 @@ const EditQuiz: React.FC = () => {
                 onChange={(e) =>
                   handleQuestionChange(qIndex, 'explanation', e.target.value)
                 }
+                disabled={disabled}
               />
               <Box mt={2}>
                 <Typography variant="subtitle1">Answers</Typography>
@@ -255,6 +272,7 @@ const EditQuiz: React.FC = () => {
                           e.target.value,
                         )
                       }
+                      disabled={disabled}
                     />
                     <TextField
                       label={`Answer ${aIndex + 1} Message`}
@@ -269,6 +287,7 @@ const EditQuiz: React.FC = () => {
                           e.target.value,
                         )
                       }
+                      disabled={disabled}
                     />
                   </Box>
                 ))}
@@ -279,10 +298,17 @@ const EditQuiz: React.FC = () => {
       </Box>
       <Box mt={4} display="flex" justifyContent="flex-end">
         <Button
+          variant="outlined"
+          onClick={() => navigate('/')}
+          disabled={saving}
+        >
+          Cancel
+        </Button>
+        <Button
           variant="contained"
           color="primary"
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || !dirty}
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>

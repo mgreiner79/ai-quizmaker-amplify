@@ -3,8 +3,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './features/quiz/routes/Home';
-import CreateQuiz from './pages/CreateQuiz';
-import EditQuiz from './pages/EditQuiz';
+import CreateQuiz from './features/quiz/routes/CreateQuiz';
+import EditQuiz from './features/quiz/routes/EditQuiz';
 import QuizAttempt from './pages/QuizAttempt';
 import LoginPage from './pages/Login';
 
