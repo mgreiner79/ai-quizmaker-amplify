@@ -1,19 +1,56 @@
 # features/quiz/hooks
 
-Feature-specific hooks that encapsulate data fetching, subscriptions, and complex UI logic.
+Feature-specific **behavior** (state + side effects) lives here. Hooks hide
+data fetching, subscriptions, timers, and workflow orchestration so your
+route/components can stay focused on rendering.
 
-## Contains
+---
 
-- `useQuiz(id)` – fetch a quiz by id (and loading/error).
-- `useQuizzes()` – observeQuery with sorting and filtering by owner.
-- (Optional) `useCreationProgress(quizId)` – subscribe to creation events.
+## What hooks are for
 
-## Does NOT contain
+- **Fetch + subscribe** to Quiz data (and keep it live)
+- **Orchestrate workflows** (e.g., start quiz generation → watch progress → finish)
+- **Encapsulate complex UI logic** (debounce, timers, derived state)
+- **Expose a simple API** back to the UI: `data`, `status`, and `actions`
 
-- JSX. Hooks return data/state/actions.
+> If you need `useEffect`, subscriptions, timers, or you reuse the behavior in more than one component, it likely belongs in a hook.
 
-## Conventions
+---
 
-- Call `api/*` modules; do not import Amplify client directly.
-- Ensure cleanup of subscriptions/timers in `useEffect` return handlers.
-- Strong types for return values.
+## What does _not_ belong in hooks
+
+- **JSX / rendering** → keep in components
+- **Pure calculations** → move to `utils` (plain functions)
+- **Cross-feature global state** → use Context (or a state library) at the app layer
+- **One-off trivial UI state** (e.g., a single menu toggle) → keep local in the component
+
+---
+
+## Contains (examples)
+
+- `useQuiz(id)` – fetch a quiz by id; exposes `{ quiz, loading, error, refetch }`
+- `useQuizzes()` – `observeQuery` with newest-first sorting and owner filtering
+- `useCreationProgress(quizId)` – snapshot current progress, subscribe to updates, derive `{ message, percent }`
+- (optional) `useQuizCreation(quizId)` – start mutation, flip state early, subscribe to completion
+
+---
+
+## Design goals & return shape
+
+Hooks should return:
+
+- **Data:** `quiz`, `quizzes`, `progress`, etc.
+- **Status:** `loading`, `error`, and optionally `status`/`percent`
+- **Actions:** `start()`, `refetch()`, `update()`, etc. (wrap in `useCallback`)
+- **Stable references:** avoid recreating functions/objects every render
+
+Example signature:
+
+```ts
+type UseThing = () => {
+  data: T | null;
+  loading: boolean;
+  error: unknown;
+  start?: (input: X) => Promise<void>;
+};
+```
