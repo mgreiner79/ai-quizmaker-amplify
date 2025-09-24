@@ -16,7 +16,7 @@ This document tracks the detailed refactor task list, current status, and next s
 ## Recent Changes
 
 - Introduced feature-first folders under src/features/quiz (api, hooks, routes, components, types).
-- Central Amplify client added at src/lib/amplifyClient.ts (but Amplify.configure still duplicated in main.tsx).
+- Central Amplify client added at src/lib/amplifyClient.ts.
 - Vite path alias configured (@ -> src) in vite.config.ts.
 - API layer created:
   - src/features/quiz/api/quizzes.ts (watchQuizzes, deleteQuiz, getQuiz, updateQuiz, generateQuiz, onQuizCreated)
@@ -32,10 +32,9 @@ This document tracks the detailed refactor task list, current status, and next s
   - src/features/quiz/components/QuizCreationProgress.tsx
 - Lib helpers present:
   - src/lib/storage.ts, src/lib/logger.ts
+- Central router wired in src/app/router.tsx with React.lazy code-splitting, public routes (/login, /quiz/:id), protected group via ProtectedRoute + Outlet, and NotFound.
+- Providers stack implemented in src/app/providers.tsx (BrowserRouter, Authenticator.Provider, MUI ThemeProvider, CssBaseline); main.tsx simplified to wrap <App /> with <Providers>.
 - Legacy still present:
-  - App still owns routes (src/App.tsx); central router exists at src/app/router.tsx but not wired yet
-  - Providers are in main.tsx; src/app/providers.tsx exists but is not used
-  - Duplicate Amplify.configure (in main.tsx and lib/amplifyClient.ts)
   - QuizAttempt remains under src/pages with global CSS and authMode: 'apiKey'
   - EditQuiz imports Grid2 from @mui/material (incorrect source)
   - Theme duplication (legacy src/theme.tsx vs intended src/styles/theme.ts)
@@ -44,17 +43,17 @@ This document tracks the detailed refactor task list, current status, and next s
 
 Phase 1 — Routing and Providers
 
-- [ ] Create/layer central router (src/app/router.tsx)
-  - [ ] Use React.lazy for code-split routes: Home, CreateQuiz, EditQuiz, QuizAttempt
-  - [ ] Public routes: /login, /quiz/:quizId
-  - [ ] Protected group via <ProtectedRoute> that renders <Outlet />
-  - [ ] NotFound route instead of redirect loop
-- [ ] Convert ProtectedRoute to Outlet pattern (no children prop, returns <Outlet /> when authed, else <Navigate to="/login" />)
-- [ ] Update App.tsx to delegate to <AppRouter /> only (remove inline Routes definitions)
-- [ ] Implement providers stack (src/app/providers.tsx)
-  - [ ] Move Authenticator.Provider, MUI ThemeProvider, CssBaseline, BrowserRouter here
-  - [ ] Main.tsx: wrap <App /> with <Providers>, remove wrappers
-- [ ] Remove duplicate Amplify.configure from main.tsx (Amplify will be configured only in src/lib/amplifyClient.ts)
+- [x] Create/layer central router (src/app/router.tsx)
+  - [x] Use React.lazy for code-split routes: Home, CreateQuiz, EditQuiz, QuizAttempt
+  - [x] Public routes: /login, /quiz/:quizId
+  - [x] Protected group via <ProtectedRoute> that renders <Outlet />
+  - [x] NotFound route instead of redirect loop
+- [x] Convert ProtectedRoute to Outlet pattern (no children prop, returns <Outlet /> when authed, else <Navigate to="/login" />)
+- [x] Update App.tsx to delegate to <AppRouter /> only (remove inline Routes definitions)
+- [x] Implement providers stack (src/app/providers.tsx)
+  - [x] Move Authenticator.Provider, MUI ThemeProvider, CssBaseline, BrowserRouter here
+  - [x] Main.tsx: wrap <App /> with <Providers>, remove wrappers
+- [x] Remove duplicate Amplify.configure from main.tsx (Amplify will be configured only in src/lib/amplifyClient.ts)
 
 Phase 2 — Data Layer and Auth
 
@@ -136,11 +135,13 @@ Completed
 - [x] Hooks for quizzes, quiz, creation, update
 - [x] Home/Create/Edit pages refactored into features routes
 - [x] KnowledgeFileModal and QuizCreationProgress co-located under features
+- [x] Central router with code-splitting, public/protected routes, and NotFound
+- [x] ProtectedRoute converted to Outlet pattern
+- [x] Providers stack implemented; BrowserRouter moved into Providers; main.tsx simplified
+- [x] Duplicate Amplify.configure removed from main.tsx
 
 In Progress / Not Started
 
-- [ ] Central router + Outlet guard + providers stack
-- [ ] Remove duplicate Amplify.configure in main.tsx
 - [ ] QuizAttempt migration, CSS scoping, auth cleanup, and logic hardening
 - [ ] Fix Grid2 import
 - [ ] Theme consolidation to src/styles/theme.ts
