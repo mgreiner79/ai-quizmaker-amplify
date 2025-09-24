@@ -1,23 +1,15 @@
 // src/components/ProtectedRoute.tsx
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 
-interface ProtectedRouteProps {
-  children: JSX.Element;
-}
+export default function ProtectedRoute() {
+  const { user, route } = useAuthenticator((c) => [c.user, c.route]);
+  const location = useLocation();
+  const isAuthed = route === 'authenticated' && !!user;
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  // Destructure 'user' and 'route' from the authenticator context.
-  // The `route` property indicates the current auth state.
-  const { user, route } = useAuthenticator((context) => [context.user, context.route]);
-
-  // If the user is not authenticated, redirect to the login page.
-  if (route !== 'authenticated' || !user) {
-    return <Navigate to="/login" replace />;
+  if (!isAuthed) {
+    // Preserve intended destination so login can send the user back
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
-
-  return children;
-};
-
-export default ProtectedRoute;
+  return <Outlet />;
+}

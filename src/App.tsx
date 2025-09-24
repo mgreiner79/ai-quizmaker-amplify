@@ -1,50 +1,8 @@
 // src/App.tsx
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from './components/ProtectedRoute';
-import Home from './features/quiz/routes/Home';
-import CreateQuiz from './features/quiz/routes/CreateQuiz';
-import EditQuiz from './features/quiz/routes/EditQuiz';
-import QuizAttempt from './pages/QuizAttempt';
-import LoginPage from './pages/Login';
+import { AppRouter } from './app/router';
 
-const App: React.FC = () => {
-  return (
-    <Routes>
-      {/* Public Route */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/quiz/:quizId" element={<QuizAttempt />} />
-
-      {/* Protected Routes */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/create"
-        element={
-          <ProtectedRoute>
-            <CreateQuiz />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/edit/:quizId"
-        element={
-          <ProtectedRoute>
-            <EditQuiz />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Fallback redirect */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
-};
-
+function App() {
+  return <AppRouter />;
+}
 export default App;
