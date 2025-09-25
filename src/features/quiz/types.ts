@@ -1,10 +1,10 @@
 import type { Schema } from '@/../amplify/data/resource';
 
-// Raw backend shapes (exactly what Amplify generates)
 export type Quiz = Schema['Quiz']['type'];
 export type Question = Schema['Question']['type'];
 export type Answer = Schema['Answer']['type'];
 export type CreationProgress = Schema['CreationProgress']['type'];
+export type QuizAttempt = Schema['QuizAttempt']['type'];
 
 export const notNull = <T>(x: T | null | undefined): x is T => x != null;
 

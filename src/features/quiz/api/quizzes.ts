@@ -1,21 +1,26 @@
 // src/features/quiz/api/quizzes.ts
 import client from '@/lib/amplifyClient';
 import type { Quiz } from '@/features/quiz/types';
+import { unwrap } from '@/features/quiz/api/_utils';
 
 export function watchQuizzes() {
-  return client.models.Quiz.observeQuery();
+  const response = client.models.Quiz.observeQuery();
+  return response;
 }
 
 export async function deleteQuiz(id: string) {
-  return client.models.Quiz.delete({ id });
+  const response = await client.models.Quiz.delete({ id });
+  return unwrap(response, 'deleteQuiz');
 }
 
 export async function getQuiz(id: string) {
-  return (await client.models.Quiz.get({ id })).data;
+  const response = await client.models.Quiz.get({ id });
+  return unwrap(response, 'getQuiz');
 }
 
 export async function updateQuiz(quiz: Quiz) {
-  return client.models.Quiz.update(quiz);
+  const response = await client.models.Quiz.update(quiz);
+  return unwrap(response, 'updateQuiz');
 }
 
 type QuizGenArgs = {
@@ -26,16 +31,18 @@ type QuizGenArgs = {
 };
 
 export async function generateQuiz(args: QuizGenArgs) {
-  return client.mutations.quizGenerator({
+  const response = await client.mutations.quizGenerator({
     quizId: args.quizId,
     prompt: args.prompt,
     numQuestions: args.numQuestions,
     knowledge: args.knowledge ?? '',
   });
+  return unwrap(response, 'generateQuiz');
 }
 
 export function onQuizCreated(quizId: string) {
-  return client.models.Quiz.onCreate({
+  const response = client.models.Quiz.onCreate({
     filter: { id: { eq: quizId } },
   });
+  return response;
 }

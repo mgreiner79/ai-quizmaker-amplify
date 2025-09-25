@@ -1,32 +1,38 @@
 import client from '@/lib/amplifyClient';
+import { unwrap } from '@/features/quiz/api/_utils';
 
 export async function getProgress(id: string) {
-  return (await client.models.CreationProgress.get({ id })).data;
+  const response = await client.models.CreationProgress.get({ id });
+  return unwrap(response, 'getProgress');
 }
 
 export async function createProgress(id: string) {
-  return client.models.CreationProgress.create({
+  const response = await client.models.CreationProgress.create({
     id,
     status: 'WARMING_UP',
     message: 'Warming up',
     errorText: '',
   });
+  return unwrap(response, 'createProgress');
 }
 
 export function onProgressUpdate(id: string) {
-  return client.models.CreationProgress.onUpdate({
+  const response = client.models.CreationProgress.onUpdate({
     filter: { id: { eq: id } },
   });
+  return response;
 }
 
 export function onProgressCreate(id: string) {
-  return client.models.CreationProgress.onCreate({
+  const response = client.models.CreationProgress.onCreate({
     filter: { id: { eq: id } },
   });
+  return response;
 }
 
 export function watchProgress(id: string) {
-  return client.models.CreationProgress.observeQuery({
+  const response = client.models.CreationProgress.observeQuery({
     filter: { id: { eq: id } },
   });
+  return response;
 }

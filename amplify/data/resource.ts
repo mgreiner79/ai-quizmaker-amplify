@@ -20,6 +20,7 @@ const schema = a
       text: a.string().required(),
       message: a.string().required(),
     }),
+
     Question: a.customType({
       text: a.string().required(),
       previewTime: a.integer().required(),
