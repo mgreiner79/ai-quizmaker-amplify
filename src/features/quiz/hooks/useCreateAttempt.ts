@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
-import type { QuizAttempt } from '@/features/quiz/types';
+import type { QuizAttemptInput } from '@/features/quiz/types';
 import { createQuizAttempt } from '@/features/quiz/api/attempts';
 
 export function useCreateAttempt() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createAttempt = useCallback(async (quizAttempt: QuizAttempt) => {
+  const createAttempt = useCallback(async (quizAttempt: QuizAttemptInput) => {
     setSaving(true);
     setError(null);
     try {

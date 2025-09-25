@@ -37,3 +37,7 @@ export function toQuizDraft(quiz: Quiz): QuizDraft {
   const { questions: _discard, ...rest } = base;
   return { ...(rest as Omit<Quiz, 'questions'>), questions };
 }
+
+type ServerFields = 'id' | 'createdAt' | 'updatedAt';
+
+export type QuizAttemptInput = Omit<QuizAttempt, ServerFields>;

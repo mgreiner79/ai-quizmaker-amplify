@@ -6,7 +6,7 @@ import AuthedLayout from './AuthedLayout';
 const Home = lazy(() => import('@/features/quiz/routes/Home'));
 const CreateQuiz = lazy(() => import('@/features/quiz/routes/CreateQuiz'));
 const EditQuiz = lazy(() => import('@/features/quiz/routes/EditQuiz'));
-const QuizAttempt = lazy(() => import('@/pages/QuizAttempt'));
+const QuizAttempt = lazy(() => import('@/features/quiz/routes/QuizAttempt'));
 const LoginPage = lazy(() => import('@/pages/Login'));
 const NotFound = lazy(() => import('@/app/NotFound'));
 

@@ -62,13 +62,6 @@
   flex-grow: 1;
 }
 
-/* Coin icon styling */
-.coin-icon {
-  width: 28px;
-  height: 28px;
-  margin-right: 8px;
-}
-
 /* LinearProgress styling */
 .custom-linear-progress {
   width: 150%;

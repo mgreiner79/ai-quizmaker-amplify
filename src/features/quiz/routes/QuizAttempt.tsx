@@ -13,10 +13,11 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { useParams, useNavigate } from 'react-router-dom';
-import client from '../lib/amplifyClient';
-import type { Schema } from '../../amplify/data/resource';
-import confetti from 'canvas-confetti';
-import './QuizAttempt.css';
+import type { Schema } from '../../../../amplify/data/resource';
+import confetti, { create } from 'canvas-confetti';
+import styles from '@/features/quiz/routesQuizAttempt.module.css';
+import { useQuiz } from '@/features/quiz/hooks/useQuiz';
+import { useCreateAttempt } from '@/features/quiz/hooks/useCreateAttempt';
 
 type Phase = 'overview' | 'preview' | 'question' | 'explanation' | 'finished';
 
@@ -24,7 +25,7 @@ const QuizAttempt: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
 
-  const [quiz, setQuiz] = useState<Schema['Quiz']['type'] | null>(null);
+  const { quiz, loading: quizLoading } = useQuiz(quizId);
   const [loading, setLoading] = useState<boolean>(true);
   const [phase, setPhase] = useState<Phase>('overview');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
@@ -36,6 +37,7 @@ const QuizAttempt: React.FC = () => {
   const [progress, setProgress] = useState<number>(100);
   const [previewProgress, setPreviewProgress] = useState<number>(100);
   const previewStartTimeRef = useRef<number>(0);
+  const { createAttempt, saving, error } = useCreateAttempt();
 
   // State to track available points in discrete steps.
   // maxPointsState is the current available points.
@@ -59,27 +61,9 @@ const QuizAttempt: React.FC = () => {
       navigate('/');
       return;
     }
-    const fetchQuiz = async () => {
-      try {
-        const fetchedQuiz = await client.models.Quiz.get(
-          { id: quizId },
-          { authMode: 'apiKey' },
-        );
-        if (!fetchedQuiz.data) {
-          console.error('Quiz not found');
-          navigate('/');
-          return;
-        } else {
-          setQuiz(fetchedQuiz.data);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error fetching quiz:', error);
-        setLoading(false);
-      }
-    };
-    fetchQuiz();
-
+    if (!quizLoading) {
+      setLoading(false);
+    }
     return () => {
       if (previewIntervalRef.current) clearInterval(previewIntervalRef.current);
       if (animationFrameRef.current)
@@ -100,7 +84,6 @@ const QuizAttempt: React.FC = () => {
     });
   };
 
-  // Play cheering sound (ensure cheer.mp3 exists in your public folder)
   const playCorrectSound = () => {
     const audio = new Audio('/correct.mp3');
     audio.play().catch((error) => {
@@ -267,18 +250,13 @@ const QuizAttempt: React.FC = () => {
         (sum, q) => sum + (q?.maxPoints || defaultPoints),
         0,
       );
-      const submitAttempt = async () => {
-        try {
-          await client.models.QuizAttempt.create(
-            { quizId: quiz.id, score, totalPossible, answers: userAnswers },
-            { authMode: 'apiKey' },
-          );
-          setAttemptSubmitted(true);
-        } catch (error) {
-          console.error('Error submitting quiz attempt:', error);
-        }
-      };
-      submitAttempt();
+      createAttempt({
+        quizId: quiz.id,
+        userId: 'anonymous',
+        score,
+        totalPossible,
+        answers: userAnswers,
+      });
     }
   }, [phase, quiz, score, userAnswers, attemptSubmitted]);
 
@@ -302,14 +280,14 @@ const QuizAttempt: React.FC = () => {
   const renderHeader = () => {
     if (phase !== 'overview') {
       return (
-        <Box className="quiz-header">
+        <Box className={styles['quiz-header']}>
           {phase !== 'finished' && (
             <Typography variant="h6">
               Question {currentQuestionIndex + 1} of {quiz.questions.length}
             </Typography>
           )}
           <Box display="flex" alignItems="center">
-            <img src="/coin.png" alt="coin" className="coin-icon" />
+            <img src="/coin.png" alt="coin" className={styles['coin-icon']} />
             <Typography variant="h6" sx={{ ml: 1 }}>
               {score}
             </Typography>
@@ -321,8 +299,8 @@ const QuizAttempt: React.FC = () => {
   };
 
   return (
-    <div className="quiz-attempt-wrapper">
-      <Container maxWidth="md" className="quiz-container">
+    <div className={styles['quiz-attempt-wrapper']}>
+      <Container maxWidth="md" className={styles['quiz-container']}>
         {renderHeader()}
 
         {phase === 'overview' && (
@@ -342,19 +320,19 @@ const QuizAttempt: React.FC = () => {
         )}
 
         {phase === 'preview' && currentQuestion && (
-          <Box mt={4} className="preview-section">
+          <Box mt={4} className={styles['preview-section']}>
             <Typography variant="body1" gutterBottom>
               {currentQuestion.text}
             </Typography>
-            <Box mt={2} className="progress-container">
+            <Box mt={2} className={styles['progress-container']}>
               <LinearProgress
                 variant="determinate"
                 value={previewProgress}
-                className="custom-linear-progress"
+                className={styles['custom-linear-progress']}
               />
             </Box>
-            <Box className="get-ready-container">
-              <Typography variant="h5" className="get-ready-text">
+            <Box className={styles['get-ready-container']}>
+              <Typography variant="h5" className={styles['get-ready-text']}>
                 Get Ready!
               </Typography>
             </Box>
@@ -362,21 +340,21 @@ const QuizAttempt: React.FC = () => {
         )}
 
         {phase === 'question' && currentQuestion && (
-          <Box mt={4} className="fade-in">
+          <Box mt={4} className={styles['fade-in']}>
             <Typography variant="body1" gutterBottom>
               {currentQuestion.text}
             </Typography>
-            <Box className="answer-cards-container">
+            <Box className={styles['answer-cards-container']}>
               {currentQuestion.answers.map(
                 (answer) =>
                   answer && (
                     <Card
                       key={answer.id}
-                      className={`answer-card ${
-                        selectedAnswer === answer.id ? 'selected' : ''
+                      className={`${styles['answer-card']} ${
+                        selectedAnswer === answer.id ? styles['selected'] : ''
                       } ${
                         selectedAnswer && selectedAnswer !== answer.id
-                          ? 'unselected-dim'
+                          ? styles['unselected-dim']
                           : ''
                       }`}
                     >
@@ -392,19 +370,19 @@ const QuizAttempt: React.FC = () => {
               )}
             </Box>
             {/* Smooth progress bar below the answer options */}
-            <Box mt={2} className="progress-container">
+            <Box mt={2} className={styles['progress-container']}>
               <LinearProgress
                 variant="determinate"
                 value={progress}
-                className="custom-linear-progress"
+                className={styles['custom-linear-progress']}
               />
             </Box>
             {/* Display "points available" below the progress bar */}
-            <Box className="points-container">
+            <Box className={styles['points-container']}>
               <Typography
                 variant="subtitle1"
                 align="center"
-                className="points-display"
+                className={styles['points-display']}
               >
                 Points Available: {maxPointsState}
               </Typography>
@@ -412,7 +390,7 @@ const QuizAttempt: React.FC = () => {
                 <Typography
                   variant="subtitle1"
                   align="center"
-                  className="points-display fading-text"
+                  className={`${styles['points-display']} ${styles['fading-text']}`}
                 >
                   Points Available: {oldMaxPoints}
                 </Typography>
@@ -430,23 +408,23 @@ const QuizAttempt: React.FC = () => {
             <Typography variant="body1" gutterBottom>
               {currentQuestion.explanation}
             </Typography>
-            <Box mt={2} className="explanation-cards-container">
+            <Box mt={2} className={styles['explanation-cards-container']}>
               {currentQuestion.answers.map((answer) => {
                 if (!answer) return null;
                 const isCorrect = answer.id === currentQuestion.correctAnswerId;
                 const isSelected = answer.id === selectedAnswer;
-                const cardClass = `explanation-card ${
-                  isCorrect ? 'correct' : 'incorrect'
+                const cardClass = `${styles['explanation-card']} ${
+                  isCorrect ? styles['correct'] : styles['incorrect']
                 }`;
                 return (
                   <Card key={answer.id} className={cardClass}>
                     {/* Overlay icon on the selected answer */}
                     {isSelected && (
-                      <Box className="icon-overlay">
+                      <Box className={styles['icon-overlay']}>
                         {isCorrect ? (
-                          <CheckCircleIcon className="correct-icon" />
+                          <CheckCircleIcon className={styles['correct-icon']} />
                         ) : (
-                          <CancelIcon className="incorrect-icon" />
+                          <CancelIcon className={styles['incorrect-icon']} />
                         )}
                       </Box>
                     )}
