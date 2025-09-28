@@ -13,11 +13,14 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Schema } from '../../../../amplify/data/resource';
 import confetti, { create } from 'canvas-confetti';
 import styles from '@/features/quiz/routesQuizAttempt.module.css';
 import { useQuiz } from '@/features/quiz/hooks/useQuiz';
 import { useCreateAttempt } from '@/features/quiz/hooks/useCreateAttempt';
+import { Question, Quiz } from '@/features/quiz/types';
+import correctMp3 from '@/assets/correct.mp3';
+import coinPng from '@/assets/coin.png';
+import { Nullable } from 'node_modules/@aws-amplify/data-schema/dist/esm/ModelField';
 
 type Phase = 'overview' | 'preview' | 'question' | 'explanation' | 'finished';
 
@@ -29,7 +32,6 @@ const QuizAttempt: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [phase, setPhase] = useState<Phase>('overview');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [_previewTimer, setPreviewTimer] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [score, setScore] = useState<number>(0);
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
@@ -38,6 +40,8 @@ const QuizAttempt: React.FC = () => {
   const [previewProgress, setPreviewProgress] = useState<number>(100);
   const previewStartTimeRef = useRef<number>(0);
   const { createAttempt, saving, error } = useCreateAttempt();
+  const rafIdRef = useRef<number | null>(null);
+  const phaseStartMsRef = useRef<number>(0);
 
   // State to track available points in discrete steps.
   // maxPointsState is the current available points.
@@ -55,6 +59,22 @@ const QuizAttempt: React.FC = () => {
   const animationFrameRef = useRef<number | null>(null);
   const questionStartTimeRef = useRef<number>(0);
 
+  // helpers
+  const getPreviewTime = (
+    q: Question | null,
+    quiz: Quiz | null | undefined,
+  ): number => q?.previewTime ?? quiz?.previewTime ?? defaultPreviewTime;
+
+  const getAnswerTime = (
+    q: Question | null,
+    quiz: Quiz | null | undefined,
+  ): number => q?.answerTime ?? quiz?.answerTime ?? defaultAnswerTime;
+
+  const getMaxPoints = (
+    q: Question | null,
+    quiz: Quiz | null | undefined,
+  ): number => q?.maxPoints ?? quiz?.maxPoints ?? defaultPoints;
+
   // Fetch quiz data on mount
   useEffect(() => {
     if (!quizId) {
@@ -71,7 +91,7 @@ const QuizAttempt: React.FC = () => {
     };
   }, [quizId, navigate]);
 
-  const currentQuestion: Schema['Question']['type'] | null = quiz?.questions
+  const currentQuestion: Question | null = quiz?.questions
     ? quiz.questions[currentQuestionIndex] ?? null
     : null;
 
@@ -85,7 +105,7 @@ const QuizAttempt: React.FC = () => {
   };
 
   const playCorrectSound = () => {
-    const audio = new Audio('/correct.mp3');
+    const audio = new Audio(correctMp3);
     audio.play().catch((error) => {
       console.error('Audio playback failed:', error);
     });
@@ -100,102 +120,85 @@ const QuizAttempt: React.FC = () => {
       currentQuestion
     ) {
       setPhase('preview');
-      setPreviewTimer(currentQuestion.previewTime || defaultPreviewTime);
     }
   };
 
   // Preview countdown: update once per second
-  useEffect(() => {
-    if (phase === 'preview') {
-      previewIntervalRef.current = setInterval(() => {
-        setPreviewTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(previewIntervalRef.current!);
-            setPhase('question');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (previewIntervalRef.current) clearInterval(previewIntervalRef.current);
-    };
-  }, [phase]);
 
   useEffect(() => {
-    if (phase === 'preview' && currentQuestion) {
-      const totalPreviewTime =
-        (currentQuestion.previewTime || defaultPreviewTime) * 1000; // total time in ms
-      previewStartTimeRef.current = Date.now();
+    if (phase !== 'preview' || !currentQuestion) return;
 
-      const updatePreviewProgress = () => {
-        const elapsed = Date.now() - previewStartTimeRef.current;
-        const remaining = totalPreviewTime - elapsed;
-        const newProgress = Math.max((remaining / totalPreviewTime) * 100, 0);
-        setPreviewProgress(newProgress);
-        if (remaining > 0) {
-          requestAnimationFrame(updatePreviewProgress);
-        }
-      };
+    // init
+    phaseStartMsRef.current = performance.now();
+    const totalMs = getPreviewTime(currentQuestion, quiz) * 1000;
 
-      const id = requestAnimationFrame(updatePreviewProgress);
-      return () => cancelAnimationFrame(id);
-    }
-  }, [phase, currentQuestion]);
+    const tick = (now: number) => {
+      const elapsed = now - phaseStartMsRef.current;
+      const remaining = Math.max(totalMs - elapsed, 0);
+      setPreviewProgress((remaining / totalMs) * 100);
 
-  // Smooth progress bar update using requestAnimationFrame
-  useEffect(() => {
-    if (phase === 'question' && currentQuestion) {
-      const totalTime =
-        (currentQuestion.answerTime || defaultAnswerTime) * 1000; // total time in ms
-      questionStartTimeRef.current = Date.now();
-
-      const animate = () => {
-        const elapsed = Date.now() - questionStartTimeRef.current;
-        const remaining = totalTime - elapsed;
-        const newProgress = Math.max((remaining / totalTime) * 100, 0);
-        setProgress(newProgress);
-        if (remaining > 0) {
-          animationFrameRef.current = requestAnimationFrame(animate);
-        } else {
-          setPhase('explanation');
-        }
-      };
-      animationFrameRef.current = requestAnimationFrame(animate);
-
-      return () => {
-        if (animationFrameRef.current)
-          cancelAnimationFrame(animationFrameRef.current);
-      };
-    }
-  }, [phase, currentQuestion]);
-
-  // Compute and update the available points (in steps)
-  useEffect(() => {
-    if (phase === 'question' && currentQuestion) {
-      const maxForQuestion = currentQuestion.maxPoints || defaultPoints;
-      const totalTime =
-        (currentQuestion.answerTime || defaultAnswerTime) * 1000; // in ms
-      const stepDuration = totalTime / nSteps;
-      const elapsed = Date.now() - questionStartTimeRef.current;
-      const stepsPassed = Math.floor(elapsed / stepDuration);
-      // Decrease points in steps; remain constant until a step boundary is reached.
-      const newMax = Math.max(
-        maxForQuestion - stepsPassed * (maxForQuestion / nSteps),
-        0,
-      );
-      if (maxPointsState === null) {
-        setMaxPointsState(newMax);
-      } else if (newMax !== maxPointsState) {
-        setOldMaxPoints(maxPointsState);
-        setMaxPointsState(newMax);
-        setTimeout(() => {
-          setOldMaxPoints(null);
-        }, 500); // animation duration matches CSS
+      if (remaining <= 0) {
+        setPhase('question');
+        return;
       }
-    }
-  }, [progress, phase, currentQuestion, maxPointsState]);
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+
+    rafIdRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    };
+  }, [phase, currentQuestion, quiz]);
+
+  // Question phase: manage timer and points decay
+  useEffect(() => {
+    if (phase !== 'question' || !currentQuestion) return;
+
+    phaseStartMsRef.current = performance.now();
+    const totalMs = getAnswerTime(currentQuestion, quiz) * 1000;
+    const maxForQ = getMaxPoints(currentQuestion, quiz);
+    const steps = 5;
+    const stepSize = maxForQ / steps;
+
+    // initialize deterministically at question start
+    setOldMaxPoints(null);
+    setMaxPointsState(maxForQ);
+
+    const tick = (now: number) => {
+      const elapsed = now - phaseStartMsRef.current;
+      const remaining = Math.max(totalMs - elapsed, 0);
+
+      // progress bar [0..100]
+      setProgress((remaining / totalMs) * 100);
+
+      // points in discrete steps
+      const stepsPassed = Math.floor((elapsed / totalMs) * steps);
+      const newMax = Math.max(maxForQ - stepsPassed * stepSize, 0);
+
+      setMaxPointsState((prev) => {
+        if (prev == null) return newMax; // first frame
+        if (prev !== newMax) {
+          setOldMaxPoints(prev);
+          // clear the fade after 500ms
+          setTimeout(() => setOldMaxPoints(null), 500);
+        }
+        return newMax;
+      });
+
+      if (remaining <= 0) {
+        setPhase('explanation');
+        return;
+      }
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+
+    rafIdRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    };
+  }, [phase, currentQuestion, quiz]);
 
   // Handle answer selection
   const handleAnswerSelect = (answerId: string) => {
@@ -204,7 +207,7 @@ const QuizAttempt: React.FC = () => {
     if (animationFrameRef.current)
       cancelAnimationFrame(animationFrameRef.current);
 
-    const totalTime = (currentQuestion?.answerTime || defaultAnswerTime) * 1000;
+    const totalTime = getAnswerTime(currentQuestion, quiz) * 1000;
     const elapsed = Date.now() - questionStartTimeRef.current;
     const timeTaken = elapsed / 1000;
 
@@ -214,7 +217,7 @@ const QuizAttempt: React.FC = () => {
       playCorrectSound();
       const stepDuration = totalTime / nSteps / 1000; // in seconds
       const stepsPassed = Math.floor(timeTaken / stepDuration);
-      const maxForQuestion = currentQuestion?.maxPoints || defaultPoints;
+      const maxForQuestion = getMaxPoints(currentQuestion, quiz);
       const deductionPerStep = maxForQuestion / nSteps;
       pointsAwarded = Math.max(
         maxForQuestion - stepsPassed * deductionPerStep,
@@ -233,23 +236,25 @@ const QuizAttempt: React.FC = () => {
     if (quiz && currentQuestionIndex + 1 < quiz.questions.length) {
       setCurrentQuestionIndex((prev) => prev + 1);
       setPhase('preview');
-      const previewTime =
-        quiz.questions[currentQuestionIndex + 1]?.previewTime ||
-        quiz.previewTime;
-      setPreviewTimer(previewTime);
       setProgress(100);
     } else {
       setPhase('finished');
     }
   };
 
+  const totalPossible = useMemo(() => {
+    if (!quiz) return 0;
+    return quiz.questions
+      .filter(Boolean)
+      .reduce((sum, q) => sum + getMaxPoints(q as Question, quiz), 0);
+  }, [quiz]);
+
   // When finished, submit the quiz attempt
   useEffect(() => {
     if (phase === 'finished' && quiz && !attemptSubmitted) {
-      const totalPossible = quiz.questions.reduce(
-        (sum, q) => sum + (q?.maxPoints || defaultPoints),
-        0,
-      );
+      const totalPossible = quiz.questions
+        .filter(Boolean)
+        .reduce((sum, q) => sum + getMaxPoints(q as Question, quiz), 0);
       createAttempt({
         quizId: quiz.id,
         userId: 'anonymous',
@@ -287,7 +292,7 @@ const QuizAttempt: React.FC = () => {
             </Typography>
           )}
           <Box display="flex" alignItems="center">
-            <img src="/coin.png" alt="coin" className={styles['coin-icon']} />
+            <img src={coinPng} alt="coin" className={styles['coin-icon']} />
             <Typography variant="h6" sx={{ ml: 1 }}>
               {score}
             </Typography>
@@ -456,11 +461,7 @@ const QuizAttempt: React.FC = () => {
             </Typography>
             <Typography variant="h5">Your Points: {score}</Typography>
             <Typography variant="h6">
-              Total Possible Points:{' '}
-              {quiz.questions.reduce(
-                (sum, q) => sum + (q?.maxPoints || defaultPoints),
-                0,
-              )}
+              Total Possible Points: {totalPossible ?? ' '}
             </Typography>
             <Box mt={2}>
               <Button
@@ -479,3 +480,38 @@ const QuizAttempt: React.FC = () => {
 };
 
 export default QuizAttempt;
+function useMemo(
+  arg0: () => number,
+  arg1: ({
+    title: string;
+    id: string;
+    description: string;
+    previewTime: number;
+    answerTime: number;
+    maxPoints: number;
+    questions: (
+      | {
+          text: string;
+          previewTime: number;
+          answerTime: number;
+          maxPoints: number;
+          correctAnswerId: string;
+          explanation: string;
+          answers: (
+            | { id: string; text: string; message: string }
+            | null
+            | undefined
+          )[];
+        }
+      | null
+      | undefined
+    )[];
+    owner: string;
+    prompt?: Nullable<string> | undefined;
+    knowledgeFileKey?: Nullable<string> | undefined;
+    readonly createdAt: string;
+    readonly updatedAt: string;
+  } | null)[],
+) {
+  throw new Error('Function not implemented.');
+}

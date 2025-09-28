@@ -57,18 +57,17 @@ Phase 1 — Routing and Providers
 
 Phase 2 — Data Layer and Auth
 
-- [ ] Ensure single Amplify client instance usage (no other generateClient calls; rely on src/lib/amplifyClient)
-- [ ] Add features/quiz/api/attempts.ts
-  - [ ] createQuizAttempt({ quizId, score, totalPossible, answers })
-  - [ ] getQuizPublic(id) if keeping public read separate (optional)
-- [ ] Refactor QuizAttempt to use API functions (no direct authMode unless required)
-- [ ] Decide final auth strategy (guest IAM vs API key scope); remove hardcoded 'apiKey' in QuizAttempt if not required
+- [x] Ensure single Amplify client instance usage (no other generateClient calls; rely on src/lib/amplifyClient)
+- [x] Add features/quiz/api/attempts.ts
+  - [x] createQuizAttempt({ quizId, score, totalPossible, answers })
+- [x] Refactor QuizAttempt to use API functions (no direct authMode unless required)
+- [x] Decide final auth strategy (guest IAM vs API key scope); remove hardcoded 'apiKey' in QuizAttempt if not required
 
 Phase 3 — QuizAttempt Migration and Logic Hardening
 
-- [ ] Move src/pages/QuizAttempt.tsx to src/features/quiz/routes/QuizAttempt.tsx
-- [ ] Scope styles: convert src/pages/QuizAttempt.css to CSS module (QuizAttempt.module.css) or MUI sx/styled
-- [ ] Import assets as modules (coin.png, correct.mp3) rather than absolute / paths
+- [x] Move src/pages/QuizAttempt.tsx to src/features/quiz/routes/QuizAttempt.tsx
+- [x] Scope styles: convert src/pages/QuizAttempt.css to CSS module (QuizAttempt.module.css) or MUI sx/styled
+- [x] Import assets as modules (coin.png, correct.mp3) rather than absolute / paths
 - [ ] Keyboard accessibility (1–4 to select answers; Enter to confirm; aria-pressed; role="button")
 - [ ] Timer cleanup and determinism:
   - [ ] Single active setInterval/RAF; cancel on phase change/unmount

@@ -7,7 +7,7 @@ const Home = lazy(() => import('@/features/quiz/routes/Home'));
 const CreateQuiz = lazy(() => import('@/features/quiz/routes/CreateQuiz'));
 const EditQuiz = lazy(() => import('@/features/quiz/routes/EditQuiz'));
 const QuizAttempt = lazy(() => import('@/features/quiz/routes/QuizAttempt'));
-const LoginPage = lazy(() => import('@/pages/Login'));
+const LoginPage = lazy(() => import('@/features/auth/routes/Login'));
 const NotFound = lazy(() => import('@/app/NotFound'));
 
 const Fallback = () => <div style={{ padding: 24 }}>Loading...</div>;
