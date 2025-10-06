@@ -18,14 +18,14 @@ export function AppRouter() {
       <Routes>
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/quiz/:id" element={<QuizAttempt />} />
+        <Route path="/quiz/:quizId" element={<QuizAttempt />} />
 
         {/* Protected */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AuthedLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/create" element={<CreateQuiz />} />
-            <Route path="/edit/:id" element={<EditQuiz />} />
+            <Route path="/edit/:quizId" element={<EditQuiz />} />
           </Route>
         </Route>
         {/* 404 */}

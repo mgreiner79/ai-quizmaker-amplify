@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:cov": "vitest run --coverage"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.5.5",
@@ -29,6 +32,9 @@
     "@aws-amplify/backend": "^1.14.0",
     "@aws-amplify/backend-cli": "^1.4.9",
     "@aws-sdk/types": "^3.734.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/canvas-confetti": "^1.9.0",
     "@types/pdf-parse": "^1.1.4",
     "@types/react": "^18.2.66",
@@ -43,9 +49,11 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "jsdom": "^27.0.0",
     "sass-embedded": "^1.83.4",
     "tsx": "^4.7.2",
     "typescript": "^5.4.5",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+    "vitest": "^3.2.4"
   }
 }

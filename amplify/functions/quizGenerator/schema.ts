@@ -1,12 +1,10 @@
-import { ResponseFormatJSONSchema } from "openai/resources/shared.mjs";
-
-
+import { ResponseFormatJSONSchema } from 'openai/resources/shared.mjs';
 
 const schema: ResponseFormatJSONSchema.JSONSchema = {
   name: 'Quiz',
   strict: true,
   schema: {
-    type: "object",
+    type: 'object',
     properties: {
       title: {
         type: 'string',
@@ -36,7 +34,14 @@ const schema: ResponseFormatJSONSchema.JSONSchema = {
         },
       },
     },
-    required: ["title", "description", "previewTime","answerTime","maxPoints", "questions"],
+    required: [
+      'title',
+      'description',
+      'previewTime',
+      'answerTime',
+      'maxPoints',
+      'questions',
+    ],
     additionalProperties: false,
     definitions: {
       Answer: {
@@ -57,11 +62,15 @@ const schema: ResponseFormatJSONSchema.JSONSchema = {
           },
         },
         additionalProperties: false,
-        required: ["id", "text", "message"]
+        required: ['id', 'text', 'message'],
       },
       Question: {
         type: 'object',
         properties: {
+          id: {
+            type: 'string',
+            description: 'The unique identifier for the question',
+          },
           text: {
             type: 'string',
             description: 'The text of the question',
@@ -98,7 +107,15 @@ const schema: ResponseFormatJSONSchema.JSONSchema = {
           },
         },
         additionalProperties: false,
-        required: ["text", "previewTime","answerTime","maxPoints","correctAnswerId","explanation","answers"]
+        required: [
+          'text',
+          'previewTime',
+          'answerTime',
+          'maxPoints',
+          'correctAnswerId',
+          'explanation',
+          'answers',
+        ],
       },
     },
   },

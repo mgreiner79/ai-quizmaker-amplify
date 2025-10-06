@@ -22,6 +22,7 @@ const schema = a
     }),
 
     Question: a.customType({
+      id: a.id().required(),
       text: a.string().required(),
       previewTime: a.integer().required(),
       answerTime: a.integer().required(),

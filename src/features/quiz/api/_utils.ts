@@ -1,4 +1,5 @@
 // src/features/quiz/api/_utils.ts
+
 export class ApiError extends Error {
   constructor(message: string, public details?: unknown) {
     super(message);
