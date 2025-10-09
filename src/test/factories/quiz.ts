@@ -23,11 +23,13 @@ export function makeQuestion(overrides: Partial<Question> = {}): Question {
 }
 
 /** Minimal, valid Quiz for tests, with all required fields. */
-export function makeQuiz(
-  overrides: Partial<Quiz> & { questions?: Question[] } = {},
-): Quiz {
+export function makeQuiz(overrides: Partial<Quiz> = {}): Quiz {
   const id = overrides.id ?? `QUIZ-${++quizSeq}`;
   const now = new Date().toISOString();
+
+  const filteredQuestions = (overrides as any).questions?.filter(Boolean) ?? [
+    makeQuestion(),
+  ];
 
   return {
     id,
@@ -37,7 +39,7 @@ export function makeQuiz(
     answerTime: 20,
     maxPoints: 3000,
     // Ensure at least one valid Question by default
-    questions: overrides.questions ?? [makeQuestion()],
+    questions: filteredQuestions as Question[],
     // Optional fields can be empty/undefined; required ones must be present
     prompt: overrides.prompt ?? '',
     knowledgeFileKey: overrides.knowledgeFileKey, // optional
@@ -46,5 +48,5 @@ export function makeQuiz(
     updatedAt: overrides.updatedAt ?? now,
     // Allow any provided overrides to win
     ...overrides,
-  };
+  } as Quiz;
 }

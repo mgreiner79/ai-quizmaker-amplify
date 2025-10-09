@@ -1,3 +1,5 @@
+// src/fratures/quiz/hooks/__test__/useQuizPhaseTimers.test.ts
+
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Question, Quiz } from '@/features/quiz/types';
@@ -6,52 +8,39 @@ import { makeQuestion, makeQuiz } from '@/test/factories/quiz';
 // ---- Hoisted mocks so we can reference them in tests ----
 const mocks = vi.hoisted(() => ({
   useRafCountdown: vi.fn(),
-  useDiscreteStepValue: vi.fn(),
   getPreviewTime: vi.fn(),
   getAnswerTime: vi.fn(),
-  getMaxPoints: vi.fn(),
 }));
 
 // Mock dependencies used by the hook under test
 vi.mock('@/features/quiz/hooks/useRafCountdown', () => ({
   useRafCountdown: mocks.useRafCountdown,
 }));
-vi.mock('@/features/quiz/hooks/useDiscreteStepValue', () => ({
-  useDiscreteStepValue: mocks.useDiscreteStepValue,
-}));
 vi.mock('@/features/quiz/utils/quizHelpers', () => ({
   getPreviewTime: mocks.getPreviewTime,
   getAnswerTime: mocks.getAnswerTime,
-  getMaxPoints: mocks.getMaxPoints,
 }));
 
 // Import AFTER mocks
-import { useQuizPhaseTimers } from '../useQuizPhaseTimers';
+import { useQuizPhaseTimers } from '@/features/quiz/hooks/useQuizPhaseTimers';
 
-// Small helpers for mocked return objects
+// Small helper for mocked rAF return objects
 const rafResult = (remaining: number) => ({
-  remainingMs: 0,
-  progressRemaining: remaining, // 1 → 0
-  progressElapsed: 1 - remaining, // 0 → 1
+  remaining: 0,
+  progressRemaining: remaining,
+  progressElapsed: 1 - remaining,
   running: true,
-});
-
-const pointsResult = (value: number, previous: number | null) => ({
-  value,
-  previous,
+  durationMs: 1000,
 });
 
 describe('useQuizPhaseTimers', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    // default helper values (seconds/points)
-    mocks.getPreviewTime.mockReturnValue(5); // seconds
-    mocks.getAnswerTime.mockReturnValue(20); // seconds
-    mocks.getMaxPoints.mockReturnValue(3000);
+    // default helper values (seconds)
+    mocks.getPreviewTime.mockReturnValue(5);
+    mocks.getAnswerTime.mockReturnValue(20);
 
-    // Default rAF returns; we will override per-test with mockImplementationOnce for preview/question
     mocks.useRafCountdown.mockReset();
-    mocks.useDiscreteStepValue.mockReset();
   });
 
   afterEach(() => {
@@ -61,19 +50,16 @@ describe('useQuizPhaseTimers', () => {
 
   it('wires preview phase timer correctly (active only in preview) and maps progress to percent', () => {
     const q: Question = makeQuestion({ id: 'Q1' });
-    const quiz: Quiz = makeQuiz({ id: 'QUIZ' });
+    const quiz: Quiz = makeQuiz({ id: 'QUIZ1' });
 
-    // First call (preview) -> remaining=0.9 -> 90%
+    // First call (preview) -> remainaing=0.9 -> 90%
+    // Second call (question) -> inactive path, but we still return a shape (remaining=1.0 -> 100%)
     mocks.useRafCountdown
-      .mockImplementationOnce(() => rafResult(0.9)) // preview
-      .mockImplementationOnce(() => rafResult(1.0)); // question (inactive path still returns shape)
-
-    // Points are based on question timer's progressElapsed (from 2nd rAF mock above -> 0)
-    mocks.useDiscreteStepValue.mockReturnValue(pointsResult(2400, 3000));
+      .mockImplementationOnce(() => rafResult(0.9))
+      .mockImplementationOnce(() => rafResult(1.0));
 
     const onPreviewEnd = vi.fn();
     const onQuestionEnd = vi.fn();
-
     const { result } = renderHook(() =>
       useQuizPhaseTimers(
         'preview',
@@ -85,33 +71,24 @@ describe('useQuizPhaseTimers', () => {
     );
 
     // Progress mapping
-    expect(result.current.previewProgress).toBeCloseTo(90); // 0.9 * 100
-    expect(result.current.questionProgress).toBeCloseTo(100); // 1 * 100
-    expect(result.current.maxPoints).toBe(2400);
-    expect(result.current.oldPoints).toBe(3000);
+    expect(result.current.previewProgressPct).toBeCloseTo(90);
+    expect(result.current.questionProgressPct).toBeCloseTo(100);
 
     // Assert first useRafCountdown call (preview) arguments
     const firstCallArgs = mocks.useRafCountdown.mock.calls[0][0];
     expect(firstCallArgs.active).toBe(true);
-    expect(firstCallArgs.durationMs).toBe(5 * 1000); // getPreviewTime() * 1000
+    expect(firstCallArgs.durationMs).toBe(5 * 1000);
     expect(firstCallArgs.restartKey).toBe('Q1');
     expect(firstCallArgs.onEnd).toBe(onPreviewEnd);
 
     // Assert second useRafCountdown call (question) arguments
     const secondCallArgs = mocks.useRafCountdown.mock.calls[1][0];
-    expect(secondCallArgs.active).toBe(false); // phase is 'preview'
-    expect(secondCallArgs.durationMs).toBe(20 * 1000); // getAnswerTime() * 1000
+    expect(secondCallArgs.active).toBe(false);
+    expect(secondCallArgs.durationMs).toBe(20 * 1000);
     expect(secondCallArgs.restartKey).toBe('Q1');
     expect(secondCallArgs.onEnd).toBe(onQuestionEnd);
-
-    // Points hook arguments
-    const pointsArgs = mocks.useDiscreteStepValue.mock.calls[0][0];
-    expect(pointsArgs.base).toBe(3000); // getMaxPoints()
-    expect(pointsArgs.steps).toBe(5);
-    expect(pointsArgs.progressElapsed).toBeCloseTo(0); // from questionTimer.progressElapsed (1 - 1.0)
   });
-
-  it('wires question phase timer correctly (active only in question) and points use question elapsed', () => {
+  it('wires question phase timer correctly (active only in question)', () => {
     const q: Question = makeQuestion({ id: 'Q2' });
     const quiz: Quiz = makeQuiz({ id: 'QUIZ' });
 
@@ -119,9 +96,6 @@ describe('useQuizPhaseTimers', () => {
     mocks.useRafCountdown
       .mockImplementationOnce(() => rafResult(1.0)) // preview inactive
       .mockImplementationOnce(() => rafResult(0.25)); // question active
-
-    // progressElapsed for question timer is 0.75 (1 - 0.25)
-    mocks.useDiscreteStepValue.mockReturnValue(pointsResult(1800, 2400));
 
     const onPreviewEnd = vi.fn();
     const onQuestionEnd = vi.fn();
@@ -137,10 +111,8 @@ describe('useQuizPhaseTimers', () => {
     );
 
     // Progress mapping
-    expect(result.current.previewProgress).toBeCloseTo(100);
-    expect(result.current.questionProgress).toBeCloseTo(25); // 0.25 * 100
-    expect(result.current.maxPoints).toBe(1800);
-    expect(result.current.oldPoints).toBe(2400);
+    expect(result.current.previewProgressPct).toBeCloseTo(100);
+    expect(result.current.questionProgressPct).toBeCloseTo(25); // 0.25 * 100
 
     // Preview call args
     const previewArgs = mocks.useRafCountdown.mock.calls[0][0];
@@ -155,32 +127,21 @@ describe('useQuizPhaseTimers', () => {
     expect(questionArgs.durationMs).toBe(20 * 1000);
     expect(questionArgs.restartKey).toBe('Q2');
     expect(questionArgs.onEnd).toBe(onQuestionEnd);
-
-    // Points args use questionTimer.progressElapsed (0.75 from above)
-    const pointsArgs = mocks.useDiscreteStepValue.mock.calls[0][0];
-    expect(pointsArgs.base).toBe(3000);
-    expect(pointsArgs.steps).toBe(5);
-    expect(pointsArgs.progressElapsed).toBeCloseTo(0.75, 5);
   });
 
-  it('handles no question: both timers duration=0, inactive, and base points=0', () => {
+  it('handles no question: both timers duration=0 and inactive', () => {
     // When question is null, hook passes durationMs 0 and active false
     mocks.useRafCountdown
       .mockImplementationOnce(() => rafResult(1.0)) // preview
       .mockImplementationOnce(() => rafResult(1.0)); // question
-
-    mocks.getMaxPoints.mockReturnValueOnce(0);
-    mocks.useDiscreteStepValue.mockReturnValue(pointsResult(0, null));
 
     const { result } = renderHook(() =>
       useQuizPhaseTimers('preview', null, null),
     );
 
     // progress from mocks: 1.0 -> 100%
-    expect(result.current.previewProgress).toBe(100);
-    expect(result.current.questionProgress).toBe(100);
-    expect(result.current.maxPoints).toBe(0);
-    expect(result.current.oldPoints).toBeNull();
+    expect(result.current.previewProgressPct).toBe(100);
+    expect(result.current.questionProgressPct).toBe(100);
 
     // Verify args: durationMs 0 and active false when question is null
     const previewArgs = mocks.useRafCountdown.mock.calls[0][0];
@@ -189,10 +150,6 @@ describe('useQuizPhaseTimers', () => {
     const questionArgs = mocks.useRafCountdown.mock.calls[1][0];
     expect(questionArgs.active).toBe(false);
     expect(questionArgs.durationMs).toBe(0);
-
-    // Points base 0
-    const pointsArgs = mocks.useDiscreteStepValue.mock.calls[0][0];
-    expect(pointsArgs.base).toBe(0);
   });
 
   it('propagates restartKey as question.id to both timers (restarts on id change)', () => {
@@ -206,8 +163,6 @@ describe('useQuizPhaseTimers', () => {
       .mockImplementationOnce(() => rafResult(1.0)) // render 1: question
       .mockImplementationOnce(() => rafResult(0.8)) // render 2: preview
       .mockImplementationOnce(() => rafResult(1.0)); // render 2: question
-
-    mocks.useDiscreteStepValue.mockReturnValue(pointsResult(3000, null));
 
     const { rerender } = renderHook(
       ({ question }: { question: Question | null }) =>
@@ -241,7 +196,6 @@ describe('useQuizPhaseTimers', () => {
     mocks.useRafCountdown
       .mockImplementationOnce(() => rafResult(0.5))
       .mockImplementationOnce(() => rafResult(0.5));
-    mocks.useDiscreteStepValue.mockReturnValue(pointsResult(1000, 2000));
 
     renderHook(() =>
       useQuizPhaseTimers(

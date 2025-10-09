@@ -1,10 +1,8 @@
 // src/features/quiz/hooks/useQuizPhaseTimers.ts
 import { useRafCountdown } from '@/features/quiz/hooks/useRafCountdown';
-import { useDiscreteStepValue } from '@/features/quiz/hooks/useDiscreteStepValue';
 import {
   getAnswerTime,
   getPreviewTime,
-  getMaxPoints,
 } from '@/features/quiz/utils/quizHelpers';
 import type { Question, Quiz } from '@/features/quiz/types';
 
@@ -12,71 +10,74 @@ export type Phase = 'preview' | 'question' | string;
 
 export interface UseQuizPhaseTimersResult {
   /** 0–100 percent of preview time remaining (for a progress bar). */
-  previewProgress: number;
+  previewProgressPct: number;
+  /** Milliseconds remaining in the preview phase (for time displays). */
+  previewRemainingMs: number;
+  /** 0..1 progress of preview time elapsed (for points decay calculations). */
+  previewElapsed01: number;
+  /** Total preview duration in milliseconds. */
+  previewDurationMs: number;
   /** 0–100 percent of question time remaining (for a progress bar). */
-  questionProgress: number;
-  /** Current points available at this moment (discrete decay). */
-  maxPoints: number;
-  /** Previous points value, briefly exposed for fade/ghost UI. */
-  oldPoints: number | null;
+  questionProgressPct: number;
+  /** Milliseconds remaining in the question phase (for time displays). */
+  questionRemainingMs: number;
+  /** 0..1 progress of question time elapsed (for points decay calculations). */
+  questionElapsed01: number;
+  /** Total question duration in milliseconds. */
+  questionDurationMs: number;
 }
 
 /**
  * Orchestrates the timers for quiz phases:
  * - A rAF-driven countdown for the **preview** phase
  * - A rAF-driven countdown for the **question** phase
- * - A **discrete points decay** tied to the question timer's progress
- *
- * Durations come from quiz helpers (in **seconds**) and are converted to ms.
- * `restartKey` uses the question id so changing questions restarts both timers.
+
  */
 export function useQuizPhaseTimers(
   phase: Phase,
-  question: Question | null | undefined,
+  currentQuestion: Question | null | undefined,
   quiz: Quiz | null | undefined,
   onPreviewEnd?: () => void,
   onQuestionEnd?: () => void,
 ): UseQuizPhaseTimersResult {
+  const previewDurationMs = currentQuestion
+    ? getPreviewTime(currentQuestion, quiz) * 1000
+    : 0;
+  const questionDurationMs = currentQuestion
+    ? getAnswerTime(currentQuestion, quiz) * 1000
+    : 0;
+
   // --- Preview countdown -----------------------------------------------------
   // Active only during the preview phase, and only when a question exists.
-  const preview = useRafCountdown({
-    active: phase === 'preview' && !!question,
+  const previewTimer = useRafCountdown({
+    active: phase === 'preview' && !!currentQuestion,
     // Helpers return seconds → convert to ms; fall back to 0 when no question.
-    durationMs: question ? getPreviewTime(question, quiz) * 1000 : 0,
+    durationMs: previewDurationMs,
     // Changing question id restarts the preview timer.
-    restartKey: question?.id,
+    restartKey: currentQuestion?.id,
     onEnd: onPreviewEnd,
   });
 
   // --- Question countdown ----------------------------------------------------
   // Active only during the question phase, and only when a question exists.
   const questionTimer = useRafCountdown({
-    active: phase === 'question' && !!question,
-    durationMs: question ? getAnswerTime(question, quiz) * 1000 : 0,
+    active: phase === 'question' && !!currentQuestion,
+    durationMs: questionDurationMs,
     // Changing question id restarts the question timer.
-    restartKey: question?.id,
+    restartKey: currentQuestion?.id,
     onEnd: onQuestionEnd,
   });
 
-  // --- Points decay (discrete steps tied to question progress) ---------------
-  // Base (max) points for this question; 0 when no question.
-  const maxForQ = question ? getMaxPoints(question, quiz) : 0;
-
-  // As the question timer progresses 0 → 1, drop points in 5 discrete steps.
-  // `previous` lets the UI show a brief "ghost" of the last points value.
-  const points = useDiscreteStepValue({
-    base: maxForQ,
-    steps: 5,
-    progressElapsed: questionTimer.progressElapsed,
-    // Optional: fadeMs defaults to 500ms in the hook; override here if needed.
-    // fadeMs: 400,
-  });
-
   return {
-    // Convert normalized remaining (1→0) to percentage for progress bars.
-    previewProgress: preview.progressRemaining * 100,
-    questionProgress: questionTimer.progressRemaining * 100,
-    maxPoints: points.value,
-    oldPoints: points.previous,
+    // Preview progress: 0–100% (for a progress bar)
+    previewProgressPct: previewTimer.progressRemaining * 100,
+    previewRemainingMs: previewTimer.remainingMs,
+    previewElapsed01: previewTimer.progressElapsed,
+    previewDurationMs: previewDurationMs,
+    // Question progress: 0–100% (for a progress bar)
+    questionProgressPct: questionTimer.progressRemaining * 100,
+    questionRemainingMs: questionTimer.remainingMs,
+    questionElapsed01: questionTimer.progressElapsed,
+    questionDurationMs: questionDurationMs,
   };
 }

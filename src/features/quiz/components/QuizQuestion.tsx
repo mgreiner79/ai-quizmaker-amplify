@@ -1,4 +1,3 @@
-import React, { useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -8,34 +7,33 @@ import {
   Typography,
 } from '@mui/material';
 import styles from '@/features/quiz/routes/QuizAttempt.module.css';
-import type { Question } from '../types';
+import type { Question } from '@/features/quiz/types';
+
+export interface QuizQuestionQprops {
+  question: Question;
+  progressPct: number; // 100..0 remaining
+  pointsValue: number; // current points available
+  pointsPrevious: number | null; // faded value
+  selectedAnswer: string | null;
+  onAnswer: (answerId: string, timeTakenSec: number) => void;
+  remainingMs: number;
+  durationMs: number;
+}
 
 export function QuizQuestion({
   question,
-  progress, // 0..100
-  maxPoints, // current points available (discrete)
-  oldMaxPoints, // previous value for fade effect (or null)
+  progressPct,
+  pointsValue,
+  pointsPrevious,
   selectedAnswer,
-  onAnswer, // (answerId: string, timeTakenSec: number) => void
-}: {
-  question: Question;
-  progress: number;
-  maxPoints: number | null;
-  oldMaxPoints: number | null;
-  selectedAnswer: string | null;
-  onAnswer: (answerId: string, timeTakenSec: number) => void;
-}) {
-  const startRef = useRef<number>(0);
-
-  useEffect(() => {
-    // mark the moment this question rendered
-    startRef.current = performance.now();
-  }, [question]);
-
-  const handleClick = (answerId: string) => {
-    if (selectedAnswer) return; // ignore if selection already made
-    const elapsedMs = performance.now() - startRef.current;
-    onAnswer(answerId, elapsedMs / 1000);
+  onAnswer,
+  remainingMs,
+  durationMs,
+}: QuizQuestionQprops) {
+  const handleSelect = (answerId: string) => {
+    if (selectedAnswer) return;
+    const timeTakenSec = (durationMs - remainingMs) / 1000;
+    onAnswer(answerId, Math.max(timeTakenSec, 0));
   };
 
   return (
@@ -48,16 +46,16 @@ export function QuizQuestion({
         {question.answers.map((answer) => {
           if (!answer) return null;
           const isSelected = selectedAnswer === answer.id;
-          const isDim = !!selectedAnswer && selectedAnswer !== answer.id;
+          const dimOther = selectedAnswer && !isSelected;
 
           return (
             <Card
               key={answer.id}
               className={`${styles['answer-card']} ${
                 isSelected ? styles['selected'] : ''
-              } ${isDim ? styles['unselected-dim'] : ''}`}
+              } ${dimOther ? styles['unselected-dim'] : ''}`}
             >
-              <CardActionArea onClick={() => handleClick(answer.id)}>
+              <CardActionArea onClick={() => handleSelect(answer.id)}>
                 <CardContent>
                   <Typography variant="body1">{answer.text}</Typography>
                 </CardContent>
@@ -71,7 +69,7 @@ export function QuizQuestion({
       <Box mt={2} className={styles['progress-container']}>
         <LinearProgress
           variant="determinate"
-          value={progress}
+          value={progressPct}
           className={styles['custom-linear-progress']}
         />
       </Box>
@@ -83,16 +81,16 @@ export function QuizQuestion({
           align="center"
           className={styles['points-display']}
         >
-          Points Available: {maxPoints ?? 0}
+          Points Available: {Math.round(pointsValue)}
         </Typography>
 
-        {oldMaxPoints !== null && (
+        {pointsPrevious !== null && (
           <Typography
             variant="subtitle1"
             align="center"
             className={`${styles['points-display']} ${styles['fading-text']}`}
           >
-            Points Available: {oldMaxPoints}
+            Points Available: {Math.round(pointsPrevious)}
           </Typography>
         )}
       </Box>
