@@ -62,21 +62,6 @@
   flex-grow: 1;
 }
 
-/* LinearProgress styling */
-.custom-linear-progress {
-  width: 150%;
-  height: 20px !important;
-  background-color: transparent !important;
-  border-radius: 10px !important;
-  overflow: hidden;
-}
-
-.custom-linear-progress :global(.MuiLinearProgress-bar) {
-  border-radius: 10px;
-  background: linear-gradient(90deg, #ff4081, #536dfe) !important;
-  transition: width 0.5s ease-out !important;
-}
-
 /* Container for answer cards */
 .answer-cards-container {
   display: flex;

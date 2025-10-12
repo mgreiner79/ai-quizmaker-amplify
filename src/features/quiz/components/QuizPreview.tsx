@@ -1,14 +1,15 @@
 import React from 'react';
-import { Box, LinearProgress, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import styles from '@/features/quiz/routes/QuizAttempt.module.css';
 import type { Question } from '../types';
+import { ProgressBar } from '@/features/quiz/components/ProgressBar';
 
 export function QuizPreview({
   question,
-  progress,
+  progressPct,
 }: {
   question: Question;
-  progress: number; // 0..100
+  progressPct: number; // 0..100
 }) {
   return (
     <Box mt={4} className={styles['preview-section']}>
@@ -17,10 +18,10 @@ export function QuizPreview({
       </Typography>
 
       <Box mt={2} className={styles['progress-container']}>
-        <LinearProgress
-          variant="determinate"
-          value={progress}
-          className={styles['custom-linear-progress']}
+        <ProgressBar
+          value={progressPct}
+          height={16}
+          ariaLabel="Preview Time Remaining"
         />
       </Box>
 

@@ -3,11 +3,11 @@ import {
   Card,
   CardActionArea,
   CardContent,
-  LinearProgress,
   Typography,
 } from '@mui/material';
 import styles from '@/features/quiz/routes/QuizAttempt.module.css';
 import type { Question } from '@/features/quiz/types';
+import { ProgressBar } from '@/features/quiz/components/ProgressBar';
 
 export interface QuizQuestionQprops {
   question: Question;
@@ -67,10 +67,10 @@ export function QuizQuestion({
 
       {/* Smooth progress bar */}
       <Box mt={2} className={styles['progress-container']}>
-        <LinearProgress
-          variant="determinate"
+        <ProgressBar
           value={progressPct}
-          className={styles['custom-linear-progress']}
+          height={16}
+          ariaLabel="Question Time Remaining"
         />
       </Box>
 

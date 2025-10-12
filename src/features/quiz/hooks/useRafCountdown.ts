@@ -69,6 +69,11 @@ export function useRafCountdown({
   const rafRef = useRef<number | null>(null);
   const endedRef = useRef(false);
 
+  const onEndRef = useRef<(() => void) | undefined>();
+  useEffect(() => {
+    onEndRef.current = onEnd;
+  }, [onEnd]);
+
   useEffect(() => {
     if (!active) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -97,7 +102,7 @@ export function useRafCountdown({
       } else if (!endedRef.current) {
         endedRef.current = true;
         setRunning(false);
-        onEnd?.();
+        onEndRef.current?.();
       }
     };
 
@@ -107,12 +112,14 @@ export function useRafCountdown({
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [active, durationMs, restartKey, onEnd]);
+  }, [active, durationMs, restartKey]);
+
+  const safeRatio = durationMs > 0 ? remainingMs / durationMs : 0;
 
   return {
     remainingMs,
-    progressRemaining: remainingMs / durationMs, // 1 → 0
-    progressElapsed: 1 - remainingMs / durationMs, // 0 → 1
+    progressRemaining: Math.min(1, Math.max(0, safeRatio)), // 1 → 0
+    progressElapsed: 1 - Math.min(1, Math.max(0, safeRatio)), // 0 → 1
     running,
   };
 }

@@ -149,7 +149,7 @@ export default function QuizAttempt() {
         {phase === 'preview' && currentQuestion && (
           <QuizPreview
             question={currentQuestion}
-            progress={timers.previewProgressPct}
+            progressPct={timers.previewProgressPct}
           />
         )}
 

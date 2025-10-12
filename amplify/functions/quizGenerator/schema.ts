@@ -108,6 +108,7 @@ const schema: ResponseFormatJSONSchema.JSONSchema = {
         },
         additionalProperties: false,
         required: [
+          'id',
           'text',
           'previewTime',
           'answerTime',
