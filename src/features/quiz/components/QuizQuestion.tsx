@@ -7,28 +7,30 @@ import {
 } from '@mui/material';
 import styles from '@/features/quiz/routes/QuizAttempt.module.css';
 import type { Question } from '@/features/quiz/types';
-import { ProgressBar } from '@/features/quiz/components/ProgressBar';
+import { CountdownBar } from '@/features/quiz/components/CountdownBar';
 
 export interface QuizQuestionQprops {
   question: Question;
-  progressPct: number; // 100..0 remaining
   pointsValue: number; // current points available
   pointsPrevious: number | null; // faded value
   selectedAnswer: string | null;
   onAnswer: (answerId: string, timeTakenSec: number) => void;
   remainingMs: number;
   durationMs: number;
+  active: boolean;
+  onEnd: () => void;
 }
 
 export function QuizQuestion({
   question,
-  progressPct,
   pointsValue,
   pointsPrevious,
   selectedAnswer,
   onAnswer,
   remainingMs,
   durationMs,
+  active,
+  onEnd,
 }: QuizQuestionQprops) {
   const handleSelect = (answerId: string) => {
     if (selectedAnswer) return;
@@ -67,8 +69,11 @@ export function QuizQuestion({
 
       {/* Smooth progress bar */}
       <Box mt={2} className={styles['progress-container']}>
-        <ProgressBar
-          value={progressPct}
+        <CountdownBar
+          restartKey={question?.id}
+          durationMs={durationMs}
+          active={active}
+          onEnd={onEnd}
           height={16}
           ariaLabel="Question Time Remaining"
         />

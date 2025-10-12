@@ -1,17 +1,17 @@
 // src/features/quiz/pages/QuizAttempt.tsx
 
 import React, { useMemo, useState } from 'react';
-import { Container, Box, Typography } from '@mui/material';
+import { Container } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import coinPng from '@/assets/coin.png';
 import correctMp3 from '@/assets/correct.mp3';
 
 // Hooks
 import { useQuiz } from '@/features/quiz/hooks/useQuiz';
 import { useCreateAttempt } from '@/features/quiz/hooks/useCreateAttempt';
-import { useQuizPhaseTimers } from '@/features/quiz/hooks/useQuizPhaseTimers';
 import { usePointsDisplay } from '@/features/quiz/hooks/usePointsDisplay';
+import { useQuizDurations } from '@/features/quiz/hooks/useQuizDurations';
+import { useQuestionTimer } from '@/features/quiz/hooks/useQuestionTimer';
 
 // Utils
 import { getMaxPoints } from '@/features/quiz/utils/quizHelpers';
@@ -47,13 +47,18 @@ export default function QuizAttempt() {
   const currentQuestion: Question | null =
     quiz?.questions?.[currentQuestionIndex] ?? null;
 
-  const timers = useQuizPhaseTimers(
-    phase,
+  const { previewDurationMs, questionDurationMs } = useQuizDurations(
     currentQuestion,
     quiz,
-    () => setPhase('question'),
-    () => setPhase('explanation'),
   );
+
+  const questionTimer = useQuestionTimer({
+    active: phase === 'question' && !!currentQuestion,
+    durationMs: questionDurationMs,
+    restartKey: currentQuestion?.id,
+    onEnd: () => setPhase('explanation'),
+    tickMs: 50, // or 100 if you want even fewer renders
+  });
 
   const maxForQ = useMemo(
     () => (currentQuestion && quiz ? getMaxPoints(currentQuestion, quiz) : 0),
@@ -63,7 +68,7 @@ export default function QuizAttempt() {
   const pointsDisplay = usePointsDisplay({
     base: maxForQ,
     steps: QUIZ_DEFAULTS.decaySteps,
-    progressElapsed: timers.questionElapsed01,
+    progressElapsed: questionTimer.progressElapsed,
     fadeMs: QUIZ_DEFAULTS.pointsFadeMs,
   });
 
@@ -149,24 +154,27 @@ export default function QuizAttempt() {
         {phase === 'preview' && currentQuestion && (
           <QuizPreview
             question={currentQuestion}
-            progressPct={timers.previewProgressPct}
+            durationMs={previewDurationMs}
+            active={phase === 'preview'}
+            onEnd={() => setPhase('question')}
           />
         )}
 
         {phase === 'question' && currentQuestion && (
           <QuizQuestion
             question={currentQuestion}
-            progressPct={timers.questionProgressPct}
             pointsValue={pointsDisplay.value}
             pointsPrevious={pointsDisplay.previous}
             selectedAnswer={selectedAnswer}
             onAnswer={(answerId) => {
               const timeTakenSec =
-                (timers.questionDurationMs - timers.questionRemainingMs) / 1000;
+                (questionDurationMs - questionTimer.remainingMs) / 1000;
               handleAnswer(answerId, Math.max(timeTakenSec, 0));
             }}
-            remainingMs={timers.questionRemainingMs}
-            durationMs={timers.questionDurationMs}
+            remainingMs={questionTimer.remainingMs}
+            durationMs={questionDurationMs}
+            active={phase === 'question'}
+            onEnd={() => setPhase('explanation')}
           />
         )}
 

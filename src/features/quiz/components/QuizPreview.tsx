@@ -2,14 +2,18 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import styles from '@/features/quiz/routes/QuizAttempt.module.css';
 import type { Question } from '../types';
-import { ProgressBar } from '@/features/quiz/components/ProgressBar';
+import { CountdownBar } from '@/features/quiz/components/CountdownBar';
 
 export function QuizPreview({
   question,
-  progressPct,
+  durationMs,
+  active,
+  onEnd,
 }: {
   question: Question;
-  progressPct: number; // 0..100
+  durationMs: number;
+  active: boolean;
+  onEnd: () => void;
 }) {
   return (
     <Box mt={4} className={styles['preview-section']}>
@@ -18,8 +22,11 @@ export function QuizPreview({
       </Typography>
 
       <Box mt={2} className={styles['progress-container']}>
-        <ProgressBar
-          value={progressPct}
+        <CountdownBar
+          restartKey={question?.id}
+          durationMs={durationMs}
+          active={active}
+          onEnd={onEnd}
           height={16}
           ariaLabel="Preview Time Remaining"
         />
