@@ -1,6 +1,10 @@
 // src/features/quiz/hooks/usePointsDisplay.ts
-import { useEffect, useRef, useState } from 'react';
-import { StepConfig, valueAtProgress } from '@/features/quiz/utils/pointsMath';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  StepConfig,
+  stepsPassedAtProgress,
+  valueAtProgress,
+} from '@/features/quiz/utils/pointsMath';
 
 export interface UsePointsDisplayProps extends StepConfig {
   /** Progress elapsed from 0 to 1 (clamped); determines current step value. */
@@ -14,6 +18,7 @@ export interface UsePointsDisplayResult {
   value: number;
   /** The previous step value, kept briefly for a fade/ghost effect; null when expired. */
   previous: number | null;
+  stepIndex: number;
 }
 
 /**
@@ -28,32 +33,45 @@ export function usePointsDisplay({
   progressElapsed,
   fadeMs = 500,
 }: UsePointsDisplayProps): UsePointsDisplayResult {
-  const [value, setValue] = useState<number>(base);
+  const stepIndex = useMemo(
+    () => stepsPassedAtProgress({ base, steps }, progressElapsed),
+    [base, steps, progressElapsed],
+  );
+
+  const targetValue = useMemo(
+    () => valueAtProgress({ base, steps }, progressElapsed),
+    [base, steps, progressElapsed],
+  );
+
+  const [value, setValue] = useState<number>(targetValue);
   const [previous, setPrevious] = useState<number | null>(null);
 
   // Timeout id for clearing `previous` after `fadeMs`.
   const clearRef = useRef<number | null>(null);
+  const lastStepRef = useRef<number>(stepIndex);
 
   useEffect(() => {
-    const newValue = valueAtProgress({ base, steps }, progressElapsed);
+    const movedToNewStep = stepIndex !== lastStepRef.current;
+    lastStepRef.current = stepIndex;
 
-    setValue((prev) => {
-      if (prev !== newValue) {
-        // Record the previous value for a brief fade/ghost in the UI
-        setPrevious(prev);
+    if (!movedToNewStep) {
+      // No new step -> do nothing; keep any existing fade running
+      return;
+    }
 
-        // Clear any existing timeout, then schedule clearing `previous`
-        if (clearRef.current) window.clearTimeout(clearRef.current);
-        if (fadeMs > 0) {
-          clearRef.current = window.setTimeout(() => setPrevious(null), fadeMs);
-        } else {
-          // If fadeMs is 0, clear immediately
-          setPrevious(null);
-          clearRef.current = null;
-        }
-      }
-      return newValue;
-    });
+    setPrevious(value);
+    setValue(targetValue);
+
+    if (clearRef.current) window.clearTimeout(clearRef.current);
+    if (fadeMs > 0) {
+      clearRef.current = window.setTimeout(() => {
+        setPrevious(null);
+        clearRef.current = null;
+      }, fadeMs);
+    } else {
+      setPrevious(null);
+      clearRef.current = null;
+    }
 
     // Cleanup on deps change/unmount: clear the pending timeout
     return () => {
@@ -62,7 +80,7 @@ export function usePointsDisplay({
         clearRef.current = null;
       }
     };
-  }, [base, steps, progressElapsed, fadeMs]);
+  }, [stepIndex, targetValue, value, fadeMs]);
 
-  return { value, previous };
+  return { value, previous, stepIndex };
 }

@@ -18,7 +18,6 @@ export interface QuizQuestionQprops {
   remainingMs: number;
   durationMs: number;
   active: boolean;
-  onEnd: () => void;
 }
 
 export function QuizQuestion({
@@ -30,7 +29,6 @@ export function QuizQuestion({
   remainingMs,
   durationMs,
   active,
-  onEnd,
 }: QuizQuestionQprops) {
   const handleSelect = (answerId: string) => {
     if (selectedAnswer) return;
@@ -73,7 +71,6 @@ export function QuizQuestion({
           restartKey={question?.id}
           durationMs={durationMs}
           active={active}
-          onEnd={onEnd}
           height={16}
           ariaLabel="Question Time Remaining"
         />
@@ -91,6 +88,7 @@ export function QuizQuestion({
 
         {pointsPrevious !== null && (
           <Typography
+            key={`fade-${pointsPrevious}`}
             variant="subtitle1"
             align="center"
             className={`${styles['points-display']} ${styles['fading-text']}`}

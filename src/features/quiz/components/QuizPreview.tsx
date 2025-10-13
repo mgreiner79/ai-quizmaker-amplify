@@ -8,12 +8,10 @@ export function QuizPreview({
   question,
   durationMs,
   active,
-  onEnd,
 }: {
   question: Question;
   durationMs: number;
   active: boolean;
-  onEnd: () => void;
 }) {
   return (
     <Box mt={4} className={styles['preview-section']}>
@@ -26,7 +24,6 @@ export function QuizPreview({
           restartKey={question?.id}
           durationMs={durationMs}
           active={active}
-          onEnd={onEnd}
           height={16}
           ariaLabel="Preview Time Remaining"
         />

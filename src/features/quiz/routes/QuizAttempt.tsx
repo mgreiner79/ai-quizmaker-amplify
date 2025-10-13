@@ -11,7 +11,7 @@ import { useQuiz } from '@/features/quiz/hooks/useQuiz';
 import { useCreateAttempt } from '@/features/quiz/hooks/useCreateAttempt';
 import { usePointsDisplay } from '@/features/quiz/hooks/usePointsDisplay';
 import { useQuizDurations } from '@/features/quiz/hooks/useQuizDurations';
-import { useQuestionTimer } from '@/features/quiz/hooks/useQuestionTimer';
+import { usePhaseTimer } from '@/features/quiz/hooks/usePhaseTimer';
 
 // Utils
 import { getMaxPoints } from '@/features/quiz/utils/quizHelpers';
@@ -52,12 +52,21 @@ export default function QuizAttempt() {
     quiz,
   );
 
-  const questionTimer = useQuestionTimer({
+  const questionTimer = usePhaseTimer({
     active: phase === 'question' && !!currentQuestion,
     durationMs: questionDurationMs,
     restartKey: currentQuestion?.id,
-    onEnd: () => setPhase('explanation'),
+    onEnd: () => {
+      setPhase('explanation');
+    },
     tickMs: 50, // or 100 if you want even fewer renders
+  });
+
+  const previewTimer = usePhaseTimer({
+    active: phase === 'preview' && !!currentQuestion,
+    durationMs: previewDurationMs,
+    restartKey: currentQuestion?.id,
+    onEnd: () => setPhase('question'),
   });
 
   const maxForQ = useMemo(
@@ -156,7 +165,6 @@ export default function QuizAttempt() {
             question={currentQuestion}
             durationMs={previewDurationMs}
             active={phase === 'preview'}
-            onEnd={() => setPhase('question')}
           />
         )}
 
@@ -174,7 +182,6 @@ export default function QuizAttempt() {
             remainingMs={questionTimer.remainingMs}
             durationMs={questionDurationMs}
             active={phase === 'question'}
-            onEnd={() => setPhase('explanation')}
           />
         )}
 
