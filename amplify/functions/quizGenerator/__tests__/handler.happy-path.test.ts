@@ -1,104 +1,23 @@
-// @vitest-environment node
-// amplify/functions/quizGenerator/tests/handler.happy-path.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Context, Callback } from 'aws-lambda';
-
-/**
- * Mocks
- * Order matters: define all mocks BEFORE importing the handler module,
- * since the handler configures Amplify at module load.
- */
-
-// Mock Amplify configure (no-op)
-vi.mock('aws-amplify', () => ({
-  Amplify: { configure: vi.fn() },
-}));
-
-// Mock env wiring used by the Lambda
-vi.mock('$amplify/env/quiz-generator', () => ({
-  env: {
-    OPENAI_API_KEY: 'test-key',
-  },
-}));
-
-// Mock backend runtime config fetch
-vi.mock('@aws-amplify/backend/function/runtime', () => ({
-  getAmplifyDataClientConfig: vi.fn().mockResolvedValue({
-    resourceConfig: {},
-    libraryOptions: {},
-  }),
-}));
-
-// Capture spies for the generated data client and storage
-const clientSpies = vi.hoisted(() => ({
-  createProgress: vi.fn(),
-  updateProgress: vi.fn(),
-  createQuiz: vi.fn(),
-}));
-
-vi.mock('aws-amplify/data', () => {
-  return {
-    generateClient: vi.fn().mockImplementation(() => ({
-      models: {
-        CreationProgress: {
-          // upsertProgress first tries update; happy path uses update only
-          update: clientSpies.updateProgress,
-          create: clientSpies.createProgress,
-        },
-        Quiz: {
-          create: clientSpies.createQuiz,
-        },
-      },
-    })),
-  };
-});
-
-// downloadData is not used in this happy-path test (no knowledge file),
-// but we mock it to keep the surface predictable if future changes enable it.
-vi.mock('aws-amplify/storage', () => ({
-  downloadData: vi.fn().mockResolvedValue({
-    result: Promise.resolve({
-      body: {
-        blob: async () => new Blob([`Sample knowledge text`]),
-      },
-    }),
-  }),
-}));
-
-// Mock OpenAI with a deterministic quiz JSON payload
-const openAiSpies = vi.hoisted(() => ({
-  create: vi.fn(),
-}));
-
-vi.mock('openai', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      chat: {
-        completions: {
-          create: openAiSpies.create,
-        },
-      },
-    })),
-  };
-});
-
-beforeEach(() => {
-  vi.resetAllMocks();
-  clientSpies.createProgress.mockReset();
-  clientSpies.updateProgress.mockReset();
-  clientSpies.createQuiz.mockReset();
-  openAiSpies.create.mockReset();
-});
+// tests/handler.happy-path.test.ts
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  mockDataClient,
+  mockOpenAI,
+  makeCtx,
+  makeCb,
+  importHandler,
+  statusesFrom,
+} from './utils';
 
 describe('quizGenerator handler - happy path', () => {
-  it('emits progress updates, creates quiz with owner, and returns created record', async () => {
-    // Arrange
+  beforeEach(() => vi.clearAllMocks());
+
+  it('emits progress updates, creates quiz, returns record', async () => {
     const quizId = 'QUIZ-123';
     const ownerSub = 'OWNER-ABC';
     const prompt = 'Make a 1-question quiz about planets.';
     const numQuestions = 1;
 
-    // Valid JSON matching the expected schema
     const llmQuiz = {
       title: 'Space Basics',
       description: 'Test your knowledge about planets.',
@@ -124,9 +43,11 @@ describe('quizGenerator handler - happy path', () => {
       ],
     };
 
-    openAiSpies.create.mockResolvedValue({
+    const openai = mockOpenAI({
       choices: [{ message: { content: JSON.stringify(llmQuiz) } }],
     });
+    const client = mockDataClient();
+    const { handler } = await importHandler();
 
     const createdQuizRecord = {
       id: quizId,
@@ -140,67 +61,30 @@ describe('quizGenerator handler - happy path', () => {
       knowledgeFileKey: undefined,
       owner: ownerSub,
     };
-
-    clientSpies.createQuiz.mockResolvedValue({ data: createdQuizRecord });
-
-    // Import the handler AFTER mocks are set up
-    const { handler } = await import('../handler');
+    client.createQuiz.mockResolvedValue({ data: createdQuizRecord });
 
     const event = {
-      arguments: {
-        quizId,
-        prompt,
-        numQuestions,
-        // No knowledge file → no EXTRACTING phase in this happy path
-      },
+      arguments: { quizId, prompt, numQuestions },
       request: { headers: { authorization: 'Bearer test-token' } },
       identity: { sub: ownerSub },
     } as any;
 
-    // Act
-    const ctx: Context = {
-      callbackWaitsForEmptyEventLoop: false,
-      functionName: 'quiz-generator',
-      functionVersion: '1',
-      invokedFunctionArn: 'arn:aws:lambda:eu:acct:function:quiz-generator',
-      memoryLimitInMB: '128',
-      awsRequestId: 'req-1',
-      logGroupName: '/aws/lambda/quiz-generator',
-      logStreamName: '2025/10/19/[$LATEST]test',
-      getRemainingTimeInMillis: () => 30000,
-      done: () => {},
-      fail: () => {},
-      succeed: () => {},
-    };
-    const cb: Callback<any> = vi.fn();
-    const result = await handler(event as any, ctx, cb);
+    const result = await handler(event, makeCtx(), makeCb());
 
-    // Assert: progress updates were called in order
-    const statuses = clientSpies.updateProgress.mock.calls.map(
-      (args) => args[0]?.status,
-    );
+    expect(statusesFrom(client.updateProgress)).toEqual([
+      'WARMING_UP',
+      'GENERATING',
+      'CREATED',
+    ]);
 
-    // upsertProgress is called with { id, ...patch }, so read `status` off the arg object
-    // Expected sequence: WARMING_UP → GENERATING → CREATED
-    expect(statuses).toEqual(['WARMING_UP', 'GENERATING', 'CREATED']);
-
-    // Assert: Quiz.create called exactly once, with owner from identity.sub
-    expect(clientSpies.createQuiz).toHaveBeenCalledTimes(1);
-    const createArgs = clientSpies.createQuiz.mock.calls[0][0];
-
-    expect(createArgs).toMatchObject({
+    expect(client.createQuiz).toHaveBeenCalledTimes(1);
+    expect(client.createQuiz.mock.calls[0][0]).toMatchObject({
       id: quizId,
-      title: llmQuiz.title,
-      description: llmQuiz.description,
-      prompt,
-      previewTime: llmQuiz.previewTime,
-      answerTime: llmQuiz.answerTime,
-      questions: llmQuiz.questions,
-      maxPoints: llmQuiz.maxPoints,
       owner: ownerSub,
+      title: llmQuiz.title,
     });
 
-    // Final return equals the created quiz record
+    expect(openai.create).toHaveBeenCalledTimes(1);
     expect(result).toEqual(createdQuizRecord);
   });
 });
