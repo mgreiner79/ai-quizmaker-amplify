@@ -1,3 +1,5 @@
+// src/app/router.tsx
+
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from '@/components/ProtectedRoute';

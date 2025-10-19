@@ -1,3 +1,4 @@
+// src/features/quiz/hooks/useQuizzes.ts
 import { useEffect, useMemo, useState } from 'react';
 import { watchQuizzes } from '@/features/quiz/api/quizzes';
 import type { Schema } from '@/../amplify/data/resource';

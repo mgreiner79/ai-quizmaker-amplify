@@ -1,3 +1,4 @@
+// src/app/NotFound.tsx
 import { Container, Typography, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 export default function NotFound() {

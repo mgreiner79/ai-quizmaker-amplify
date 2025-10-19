@@ -1,5 +1,4 @@
-// src/features/quiz/pages/QuizAttempt.tsx
-
+// src/features/quiz/routes/QuizAttempt.tsx
 import React, { useMemo, useState } from 'react';
 import { Container } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -9,7 +8,7 @@ import correctMp3 from '@/assets/correct.mp3';
 // Hooks
 import { useQuiz } from '@/features/quiz/hooks/useQuiz';
 import { useCreateAttempt } from '@/features/quiz/hooks/useCreateAttempt';
-import { usePointsDisplay } from '@/features/quiz/hooks/usePointsDisplay';
+import { useStepPoints } from '@/features/quiz/hooks/useStepPoints';
 import { useQuizDurations } from '@/features/quiz/hooks/useQuizDurations';
 import { usePhaseTimer } from '@/features/quiz/hooks/usePhaseTimer';
 
@@ -74,7 +73,7 @@ export default function QuizAttempt() {
     [currentQuestion, quiz],
   );
 
-  const pointsDisplay = usePointsDisplay({
+  const pointsDisplay = useStepPoints({
     base: maxForQ,
     steps: QUIZ_DEFAULTS.decaySteps,
     progressElapsed: questionTimer.progressElapsed,

@@ -1,4 +1,4 @@
-import React from 'react';
+// src/features/quiz/components/QuizExplanation.tsx
 import { Box, Button, Card, CardContent, Typography } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';

@@ -1,7 +1,8 @@
-import * as React from 'react';
+// src/features/quiz/components/CountdownBar.tsx
+
 import { Box } from '@mui/material';
 
-type Props = {
+type CountdownBarProps = {
   durationMs: number; // milliseconds
   active: boolean;
   restartKey?: string | number;
@@ -17,7 +18,7 @@ export function CountdownBar({
   height = 12,
   radius = 10,
   ariaLabel,
-}: Props) {
+}: CountdownBarProps) {
   return (
     <Box
       role="progressbar"

@@ -1,4 +1,4 @@
-import React from 'react';
+// src/features/quiz/components/QuizFinished.tsx
 import { Box, Button, Typography } from '@mui/material';
 
 export function QuizFinished({

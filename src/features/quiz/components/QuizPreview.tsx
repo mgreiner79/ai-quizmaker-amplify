@@ -1,4 +1,4 @@
-import React from 'react';
+// src/features/quiz/components/QuizPreview.tsx
 import { Box, Typography } from '@mui/material';
 import styles from '@/features/quiz/routes/QuizAttempt.module.css';
 import type { Question } from '../types';

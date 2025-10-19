@@ -1,4 +1,5 @@
 // /src/features/quiz/components/QuizHeader.tsx
+
 import { Box, Typography } from '@mui/material';
 import coinPng from '@/assets/coin.png';
 import styles from '@/features/quiz/routes/QuizAttempt.module.css';

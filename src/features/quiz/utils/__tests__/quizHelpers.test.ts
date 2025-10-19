@@ -1,3 +1,4 @@
+// src/features/quiz/utils/__tests__/quizHelpers.test.ts
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock the defaults so tests are deterministic and not tied to real config values

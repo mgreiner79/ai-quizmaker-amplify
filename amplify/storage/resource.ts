@@ -1,3 +1,5 @@
+// amplify/storage/resource.ts
+
 import { defineStorage } from '@aws-amplify/backend';
 import { quizGenerator } from '../functions/quizGenerator/resource';
 

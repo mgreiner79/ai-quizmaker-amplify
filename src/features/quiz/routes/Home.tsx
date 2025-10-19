@@ -1,4 +1,4 @@
-// src/pages/Home.tsx
+// src/features/quiz/routes/Home.tsx
 import React, { useState } from 'react';
 import {
   Box,
@@ -80,7 +80,6 @@ const Home: React.FC = () => {
         </Button>
       </Box>
 
-      {loading && <Typography>Loading...</Typography>}
       {error && <Typography color="error">Failed to load quizzes.</Typography>}
 
       {!loading && !error && (

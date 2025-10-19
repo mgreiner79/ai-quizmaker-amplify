@@ -1,3 +1,4 @@
+// src/components/loaders/TetrominoLoader.tsx
 import React from 'react';
 import './TetrominoLoader.scss';
 

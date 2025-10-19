@@ -1,3 +1,4 @@
+// amplify/functions/quizGenerator/schema.ts
 import { ResponseFormatJSONSchema } from 'openai/resources/shared.mjs';
 
 const schema: ResponseFormatJSONSchema.JSONSchema = {

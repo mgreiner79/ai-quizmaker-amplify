@@ -1,3 +1,4 @@
+// src/features/quiz/hooks/useQuiz.ts
 import { useCallback, useEffect, useState } from 'react';
 import { getQuiz } from '@/features/quiz/api/quizzes';
 import type { Quiz } from '@/features/quiz/types';
