@@ -1,4 +1,4 @@
-// src/pages/Login.tsx
+// src/features/auth/routes/Login.tsx
 import React from 'react';
 import {
   Authenticator,

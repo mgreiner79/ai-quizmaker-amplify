@@ -8,6 +8,16 @@ export default defineConfig({
     // Needed so Vitest can compile React/TSX the same way as your app
     react(),
   ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@/': fileURLToPath(new URL('./src/', import.meta.url)),
+      // 👇 add this line
+      '$amplify/env/quiz-generator': fileURLToPath(
+        new URL('./test/mocks/amplify-env.quiz-generator.ts', import.meta.url),
+      ),
+    },
+  },
   test: {
     // Use a simulated browser so components/hooks can access window/document
     environment: 'jsdom',
@@ -20,12 +30,6 @@ export default defineConfig({
 
     // Let imports of CSS/MUI styles “just work” during tests
     css: true,
-
-    // Keep the same alias as your app so tests resolve "@/..." correctly
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@/': fileURLToPath(new URL('./src/', import.meta.url)),
-    },
 
     // Optional: configure coverage output
     coverage: {
