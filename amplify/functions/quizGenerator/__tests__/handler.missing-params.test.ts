@@ -1,12 +1,7 @@
 // tests/handler.missing-params.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  mockDataClient,
-  mockOpenAI,
-  makeCtx,
-  makeCb,
-  importHandler,
-} from './utils';
+import { mockDataClient, mockOpenAI, importHandler } from './utils';
+import { makeCb, makeCtx } from './lambdaHelpers';
 
 describe('missing required params', () => {
   beforeEach(() => vi.clearAllMocks());

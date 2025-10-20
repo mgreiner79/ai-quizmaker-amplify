@@ -3,11 +3,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   mockDataClient,
   mockOpenAI,
-  makeCtx,
-  makeCb,
   importHandler,
   statusesFrom,
 } from './utils';
+import { makeCb, makeCtx } from './lambdaHelpers';
 
 describe('quizGenerator handler - happy path', () => {
   beforeEach(() => vi.clearAllMocks());

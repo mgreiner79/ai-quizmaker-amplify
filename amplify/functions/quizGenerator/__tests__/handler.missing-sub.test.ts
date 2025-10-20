@@ -3,11 +3,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   mockDataClient,
   mockOpenAI,
-  makeCtx,
-  makeCb,
   importHandler,
   statusesFrom,
 } from './utils';
+import { makeCb, makeCtx } from './lambdaHelpers';
 
 const llmQuiz = {
   title: 'T',
