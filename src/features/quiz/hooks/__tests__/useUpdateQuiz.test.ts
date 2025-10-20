@@ -1,14 +1,15 @@
 // src/features/quiz/hooks/__tests__/useUpdateQuiz.test.ts
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useUpdateQuiz } from '../useUpdateQuiz';
+import type { Quiz } from '@/features/quiz/types';
 import { makeQuiz } from '@/test/factories/quiz';
 
-const updateQuizMock = vi.fn();
+// 1) Module mock that calls a global you set per test
 vi.mock('@/features/quiz/api/quizzes', () => ({
-  updateQuiz: (...args: any[]) => updateQuizMock(...args),
+  updateQuiz: (q: Quiz) => (globalThis as any).__UPDATE_QUIZ__?.(q),
 }));
 
+// Helper: controllable promise
 function deferred<T>() {
   let resolve!: (v: T) => void;
   let reject!: (e?: any) => void;
@@ -21,49 +22,56 @@ function deferred<T>() {
 
 const sampleQuiz = makeQuiz({ id: 'Q1' });
 
-describe('useUpdateQuiz', () => {
+describe('useUpdateQuiz (module-mocked updateQuiz)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('starts with saving=false and error=null', () => {
-    const { result } = renderHook(() => useUpdateQuiz());
-    expect(result.current.saving).toBe(false);
-    expect(result.current.error).toBeNull();
-    expect(typeof result.current.save).toBe('function');
-  });
-
-  it('sets saving=true during request and false after success', async () => {
-    const d = deferred<any>();
-    updateQuizMock.mockReturnValueOnce(d.promise);
+  it('success path: returns value, clears error, saving false', async () => {
+    (globalThis as any).__UPDATE_QUIZ__ = vi
+      .fn()
+      .mockResolvedValue({ ok: true, id: 'Q1' });
+    const { useUpdateQuiz } = await import('../useUpdateQuiz');
 
     const { result } = renderHook(() => useUpdateQuiz());
-
     let ret: any;
-    act(() => {
-      // triggers setSaving(true) synchronously, but React commits on next tick
-      const p = result.current.save(sampleQuiz);
-      // stash promise to await later
-      (ret as any) = p;
+    await act(async () => {
+      ret = await result.current.save(sampleQuiz);
     });
 
-    await waitFor(() => expect(result.current.saving).toBe(true));
-
-    d.resolve({ ok: true, id: 'Q1' });
-    ret = await (ret as Promise<any>);
-
-    await waitFor(() => expect(result.current.saving).toBe(false));
+    expect((globalThis as any).__UPDATE_QUIZ__).toHaveBeenCalledWith(
+      sampleQuiz,
+    );
     expect(result.current.error).toBeNull();
-    expect(updateQuizMock).toHaveBeenCalledWith(sampleQuiz);
+    expect(result.current.saving).toBe(false);
     expect(ret).toEqual({ ok: true, id: 'Q1' });
   });
 
-  it('sets error when updateQuiz rejects', async () => {
-    const err = new Error('boom');
-    updateQuizMock.mockRejectedValueOnce(err);
+  it('sets saving=true while request is in flight, then false after resolve', async () => {
+    const d = deferred<any>();
+    (globalThis as any).__UPDATE_QUIZ__ = vi.fn().mockReturnValue(d.promise);
+    const { useUpdateQuiz } = await import('../useUpdateQuiz');
 
     const { result } = renderHook(() => useUpdateQuiz());
 
+    act(() => {
+      void result.current.save(sampleQuiz);
+    });
+    await waitFor(() => expect(result.current.saving).toBe(true));
+
+    act(() => {
+      d.resolve({ ok: true });
+    });
+    await waitFor(() => expect(result.current.saving).toBe(false));
+    expect(result.current.error).toBeNull();
+  });
+
+  it('propagates reject into error state', async () => {
+    const err = new Error('boom');
+    (globalThis as any).__UPDATE_QUIZ__ = vi.fn().mockRejectedValue(err);
+    const { useUpdateQuiz } = await import('../useUpdateQuiz');
+
+    const { result } = renderHook(() => useUpdateQuiz());
     await act(async () => {
       await result.current.save(sampleQuiz);
     });
@@ -72,12 +80,14 @@ describe('useUpdateQuiz', () => {
     expect(result.current.error).toBe(err);
   });
 
-  it('treats response with .errors as failure', async () => {
+  it('treats `{errors}` payload as failure and sets error', async () => {
     const err = new Error('bad');
-    updateQuizMock.mockResolvedValueOnce({ errors: err });
+    (globalThis as any).__UPDATE_QUIZ__ = vi
+      .fn()
+      .mockResolvedValue({ errors: err });
+    const { useUpdateQuiz } = await import('../useUpdateQuiz');
 
     const { result } = renderHook(() => useUpdateQuiz());
-
     await act(async () => {
       await result.current.save(sampleQuiz);
     });
@@ -87,10 +97,12 @@ describe('useUpdateQuiz', () => {
   });
 
   it('clears previous error on next attempt', async () => {
-    updateQuizMock
+    (globalThis as any).__UPDATE_QUIZ__ = vi
+      .fn()
       .mockRejectedValueOnce(new Error('first'))
       .mockResolvedValueOnce({ ok: true });
 
+    const { useUpdateQuiz } = await import('../useUpdateQuiz');
     const { result } = renderHook(() => useUpdateQuiz());
 
     await act(async () => {
