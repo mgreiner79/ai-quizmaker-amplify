@@ -8,10 +8,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@/': fileURLToPath(new URL('./src/', import.meta.url)),
-      '$amplify/env/quiz-generator': fileURLToPath(
-        new URL('./test/mocks/amplify-env.quiz-generator.ts', import.meta.url),
-      ),
     },
   },
   test: {
