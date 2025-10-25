@@ -12,6 +12,9 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  Snackbar,
+  Alert,
+  Skeleton,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -26,19 +29,36 @@ import { deleteQuiz } from '@/features/quiz/api/quizzes';
 const Home: React.FC = () => {
   const { quizzes, loading, error } = useQuizzes();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
+  const [snackOpen, setSnackOpen] = useState(false);
+  const [snackMsg, setSnackMsg] = useState('');
+  const [snackSeverity, setSnackSeverity] = useState<
+    'success' | 'error' | 'info' | 'warning'
+  >('info');
+
   const navigate = useNavigate();
+
+  const showSnack = (
+    msg: string,
+    severity: 'success' | 'error' | 'info' | 'warning' = 'info',
+  ) => {
+    setSnackMsg(msg);
+    setSnackSeverity(severity);
+    setSnackOpen(true);
+  };
 
   const handleDelete = async (quizId: string) => {
     try {
       await deleteQuiz(quizId);
-    } catch (error) {
-      console.error('Error deleting quiz:', error);
+      showSnack('Quiz deleted', 'success');
+    } catch (e) {
+      showSnack('Failed to delete quiz', 'error');
     }
   };
 
   const handleClone = (quiz: Quiz) => {
+    // Optional: toast before navigation
+    showSnack('Cloning settings…', 'info');
     navigate('/create', {
       state: {
         prompt: quiz.prompt,
@@ -61,6 +81,20 @@ const Home: React.FC = () => {
     setSelectedQuiz(null);
   };
 
+  const LoadingList = (
+    <List>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <ListItem key={i} sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Skeleton variant="text" width="35%" height={28} />
+            <Skeleton variant="text" width="55%" height={22} />
+          </Box>
+          <Skeleton variant="circular" width={40} height={40} />
+        </ListItem>
+      ))}
+    </List>
+  );
+
   return (
     <Container>
       <Box
@@ -80,9 +114,15 @@ const Home: React.FC = () => {
         </Button>
       </Box>
 
-      {error && <Typography color="error">Failed to load quizzes.</Typography>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Failed to load quizzes.
+        </Alert>
+      )}
 
-      {!loading && !error && (
+      {loading ? (
+        LoadingList
+      ) : (
         <List>
           {quizzes.map((quiz) => (
             <ListItem
@@ -115,14 +155,8 @@ const Home: React.FC = () => {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <MenuItem
           onClick={() => {
@@ -135,6 +169,7 @@ const Home: React.FC = () => {
           </ListItemIcon>
           Attempt
         </MenuItem>
+
         <MenuItem
           onClick={() => {
             handleMenuClose();
@@ -146,6 +181,7 @@ const Home: React.FC = () => {
           </ListItemIcon>
           Clone
         </MenuItem>
+
         <MenuItem
           onClick={() => {
             handleMenuClose();
@@ -157,6 +193,7 @@ const Home: React.FC = () => {
           </ListItemIcon>
           Edit
         </MenuItem>
+
         <MenuItem
           onClick={() => {
             handleMenuClose();
@@ -169,6 +206,22 @@ const Home: React.FC = () => {
           Delete
         </MenuItem>
       </Menu>
+
+      <Snackbar
+        open={snackOpen}
+        autoHideDuration={2500}
+        onClose={() => setSnackOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackOpen(false)}
+          severity={snackSeverity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackMsg}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

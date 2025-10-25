@@ -1,6 +1,6 @@
 // src/features/quiz/routes/QuizAttempt.tsx
 import React, { useMemo, useState } from 'react';
-import { Container } from '@mui/material';
+import { Box, Button, Container, Skeleton, Typography } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import correctMp3 from '@/assets/correct.mp3';
@@ -140,8 +140,36 @@ export default function QuizAttempt() {
     }
   };
 
-  if (loading) return <Container>Loading quiz...</Container>;
-  if (!quiz) return <Container>Error loading quiz.</Container>;
+  if (loading)
+    return (
+      <Container>
+        {/* Simple skeleton for attempt header & card */}
+        <Box mt={4}>
+          <Skeleton variant="text" width={220} height={40} />
+          <Skeleton variant="rectangular" height={180} sx={{ mt: 2 }} />
+        </Box>
+      </Container>
+    );
+  if (!quiz) {
+    return (
+      <Container>
+        <Box mt={6} textAlign="center">
+          <Typography variant="h4" gutterBottom>
+            We can’t open this quiz
+          </Typography>
+          <Typography color="text.secondary" gutterBottom>
+            It may not exist, be private, or you might not have permission to
+            view it.
+          </Typography>
+          <Box mt={3}>
+            <Button variant="contained" onClick={() => navigate('/')}>
+              Go to My Quizzes
+            </Button>
+          </Box>
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <div className={styles['quiz-attempt-wrapper']}>

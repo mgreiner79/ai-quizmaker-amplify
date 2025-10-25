@@ -8,9 +8,12 @@ import {
   Button,
   Card,
   CardContent,
-  Grid2,
   Alert,
+  Snackbar,
+  Skeleton,
+  Grid2,
 } from '@mui/material';
+
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { useQuiz } from '@/features/quiz/hooks/useQuiz';
@@ -33,6 +36,22 @@ const EditQuiz: React.FC = () => {
   const [draft, setDraft] = useState<QuizDraft | null>(null);
   const [dirty, setDirty] = useState(false);
 
+  // Snackbar state
+  const [snackOpen, setSnackOpen] = useState(false);
+  const [snackMsg, setSnackMsg] = useState('');
+  const [snackSeverity, setSnackSeverity] = useState<
+    'success' | 'error' | 'info' | 'warning'
+  >('info');
+
+  const showSnack = (
+    msg: string,
+    severity: 'success' | 'error' | 'info' | 'warning' = 'info',
+  ) => {
+    setSnackMsg(msg);
+    setSnackSeverity(severity);
+    setSnackOpen(true);
+  };
+
   useEffect(() => {
     if (quiz && !dirty) setDraft(toQuizDraft(quiz));
   }, [quiz, dirty]);
@@ -45,10 +64,7 @@ const EditQuiz: React.FC = () => {
   ) => {
     if (!draft) return;
     setDirty(true);
-    setDraft({
-      ...draft,
-      [field]: value,
-    });
+    setDraft({ ...draft, [field]: value });
   };
 
   const handleQuestionChange = <
@@ -79,60 +95,83 @@ const EditQuiz: React.FC = () => {
     setDirty(true);
     const questions = draft.questions.slice();
     const answers = questions[qIndex].answers.slice();
-    answers[aIndex] = {
-      ...answers[aIndex],
-      [field]: value,
-    };
-    questions[qIndex] = {
-      ...questions[qIndex],
-      answers: answers,
-    };
-    setDraft({
-      ...draft,
-      questions,
-    });
+    answers[aIndex] = { ...answers[aIndex], [field]: value };
+    questions[qIndex] = { ...questions[qIndex], answers };
+    setDraft({ ...draft, questions });
   };
 
   const handleSave = async () => {
     if (!draft) return;
     try {
-      // Save the updated quiz back to the backend.
       await save(draft as Quiz);
       setDirty(false);
-      navigate('/');
-    } catch (error) {
-      console.error('Error saving quiz:', error);
-      // error is shown via saveError Alert below
+      showSnack('Saved changes', 'success');
+      // Navigate back after a short delay so the user sees the toast
+      setTimeout(() => navigate('/'), 300);
+    } catch (e) {
+      showSnack('Failed to save changes', 'error');
     }
   };
 
+  // Loading skeletons
   if (loading && !draft) {
     return (
-      <Container>
-        <Typography variant="h5" mt={4}>
-          "Loading quiz..."
-        </Typography>
+      <Container maxWidth="md">
+        <Box mt={4} mb={2}>
+          <Skeleton variant="text" width={240} height={48} />
+          <Skeleton variant="rectangular" height={56} sx={{ mt: 2 }} />
+          <Skeleton variant="rectangular" height={56} sx={{ mt: 2 }} />
+        </Box>
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} variant="outlined" sx={{ mb: 2 }}>
+            <CardContent>
+              <Skeleton variant="text" width={160} height={32} />
+              <Skeleton variant="rectangular" height={56} sx={{ mt: 2 }} />
+              <Grid2 container spacing={2} sx={{ mt: 1 }}>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
+                  <Skeleton variant="rectangular" height={56} />
+                </Grid2>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
+                  <Skeleton variant="rectangular" height={56} />
+                </Grid2>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
+                  <Skeleton variant="rectangular" height={56} />
+                </Grid2>
+              </Grid2>
+              <Skeleton variant="rectangular" height={56} sx={{ mt: 2 }} />
+              <Skeleton variant="rectangular" height={56} sx={{ mt: 1 }} />
+            </CardContent>
+          </Card>
+        ))}
       </Container>
     );
   }
 
-  if (error) {
+  // Friendly 404/permission state (no redirect)
+  if (!loading && (error || !quiz)) {
     return (
       <Container>
-        <Box mt={4}>
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Failed to load quiz. Please try again.
-          </Alert>
-          <Button variant="contained" onClick={refetch}>
-            Retry
-          </Button>
+        <Box mt={6} textAlign="center">
+          <Typography variant="h4" gutterBottom>
+            We can’t open this quiz
+          </Typography>
+          <Typography color="text.secondary" gutterBottom>
+            It may not exist, or you might not have permission to view it.
+          </Typography>
+          <Box mt={3}>
+            <Button variant="contained" onClick={() => navigate('/')}>
+              Go to My Quizzes
+            </Button>
+            <Button sx={{ ml: 2 }} onClick={refetch}>
+              Retry
+            </Button>
+          </Box>
         </Box>
       </Container>
     );
   }
 
   if (!draft) {
-    // Should be rare, but avoids rendering undefined values
     return (
       <Container>
         <Typography variant="h6" mt={4}>
@@ -176,11 +215,13 @@ const EditQuiz: React.FC = () => {
           disabled={disabled}
         />
       </Box>
+
       <Box>
         {draft.questions.map((question, qIndex) => (
           <Card key={qIndex} variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Typography variant="h6">Question {qIndex + 1}</Typography>
+
               <TextField
                 label="Question Text"
                 fullWidth
@@ -191,8 +232,9 @@ const EditQuiz: React.FC = () => {
                 }
                 disabled={disabled}
               />
+
               <Grid2 container spacing={2}>
-                <Grid2>
+                <Grid2 size={{ xs: 12, sm: 4 }}>
                   <TextField
                     label="Preview Time (sec)"
                     type="number"
@@ -209,7 +251,8 @@ const EditQuiz: React.FC = () => {
                     disabled={disabled}
                   />
                 </Grid2>
-                <Grid2>
+
+                <Grid2 size={{ xs: 12, sm: 4 }}>
                   <TextField
                     label="Answer Time (sec)"
                     type="number"
@@ -226,7 +269,8 @@ const EditQuiz: React.FC = () => {
                     disabled={disabled}
                   />
                 </Grid2>
-                <Grid2>
+
+                <Grid2 size={{ xs: 12, sm: 4 }}>
                   <TextField
                     label="Max Points"
                     type="number"
@@ -244,6 +288,7 @@ const EditQuiz: React.FC = () => {
                   />
                 </Grid2>
               </Grid2>
+
               <TextField
                 label="Explanation"
                 fullWidth
@@ -255,6 +300,7 @@ const EditQuiz: React.FC = () => {
                 }
                 disabled={disabled}
               />
+
               <Box mt={2}>
                 <Typography variant="subtitle1">Answers</Typography>
                 {question.answers.map((answer, aIndex) => (
@@ -296,6 +342,7 @@ const EditQuiz: React.FC = () => {
           </Card>
         ))}
       </Box>
+
       <Box mt={4} display="flex" justifyContent="flex-end">
         <Button
           variant="outlined"
@@ -309,10 +356,27 @@ const EditQuiz: React.FC = () => {
           color="primary"
           onClick={handleSave}
           disabled={saving || !dirty}
+          sx={{ ml: 2 }}
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>
       </Box>
+
+      <Snackbar
+        open={snackOpen}
+        autoHideDuration={2500}
+        onClose={() => setSnackOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackOpen(false)}
+          severity={snackSeverity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackMsg}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

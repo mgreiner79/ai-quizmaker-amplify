@@ -1,12 +1,13 @@
 // src/styles/globals.ts
 import CssBaseline from '@mui/material/CssBaseline';
-import { GlobalStyles } from '@mui/material';
+import { GlobalStyles, useTheme } from '@mui/material';
 
 /**
  * AppGlobalStyles centralizes non-component global CSS so we can
  * delete scattered .css files. Keep this lean and semantic.
  */
 export function AppGlobalStyles() {
+  const theme = useTheme();
   return (
     <>
       <CssBaseline />
@@ -17,8 +18,7 @@ export function AppGlobalStyles() {
           // Gentle background similar to what you had
           body: {
             margin: 0,
-            background:
-              'linear-gradient(180deg, rgb(117, 81, 194), rgb(255, 255, 255))',
+            background: theme.palette.background.default,
             fontSynthesis: 'none',
             textRendering: 'optimizeLegibility',
             WebkitFontSmoothing: 'antialiased',

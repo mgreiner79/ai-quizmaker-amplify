@@ -6,7 +6,7 @@ let theme = createTheme({
     primary: { main: '#ff4081' }, // vibrant pink
     secondary: { main: '#536dfe' }, // bold blue
     background: {
-      default: '#f0f4f8',
+      default: '#ffffff',
       paper: '#ffffff',
     },
     text: {

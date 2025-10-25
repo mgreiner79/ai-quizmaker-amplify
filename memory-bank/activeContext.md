@@ -68,14 +68,11 @@ Phase 3 — QuizAttempt Migration and Logic Hardening
 - [x] Move src/pages/QuizAttempt.tsx to src/features/quiz/routes/QuizAttempt.tsx
 - [x] Scope styles: convert src/pages/QuizAttempt.css to CSS module (QuizAttempt.module.css) or MUI sx/styled
 - [x] Import assets as modules (coin.png, correct.mp3) rather than absolute / paths
-- [ ] Keyboard accessibility (1–4 to select answers; Enter to confirm; aria-pressed; role="button")
-- [ ] Timer cleanup and determinism:
-  - [ ] Single active setInterval/RAF; cancel on phase change/unmount
-  - [ ] Initialize points at question start (not first tick)
-  - [ ] Extract helpers:
+- [x] Timer cleanup and determinism:
+  - [x] Extract helpers:
         getPreviewTime(q, quiz), getAnswerTime(q, quiz), getMaxPoints(q, quiz)
-  - [ ] useMemo for totalPossible
-  - [ ] Remove unused \_previewTimer or display numeric timer
+  - [x] useMemo for totalPossible
+  - [x] Remove unused \_previewTimer or display numeric timer
 
 Phase 4 — UI/UX Polish
 
@@ -86,10 +83,10 @@ Phase 4 — UI/UX Polish
 
 Phase 5 — Theme and Global Styles
 
-- [ ] Consolidate theme file to src/styles/theme.ts and export a single theme
-- [ ] Update providers to consume src/styles/theme
-- [ ] Remove legacy src/theme.tsx and dangling imports
-- [ ] Remove or minimize global CSS (App.css, index.css) if redundant; ensure src/styles/globals.ts covers what’s needed
+- [x] Consolidate theme file to src/styles/theme.ts and export a single theme
+- [x] Update providers to consume src/styles/theme
+- [x] Remove legacy src/theme.tsx and dangling imports
+- [x] Remove or minimize global CSS (App.css, index.css) if redundant; ensure src/styles/globals.ts covers what’s needed
 
 Phase 6 — Storage and Knowledge Files
 

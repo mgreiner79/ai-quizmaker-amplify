@@ -30,6 +30,4 @@ amplifyconfiguration*
 
 
 # repo dump 
-repo_dump.txt
-
-memory-bank/
+repo_dump*
