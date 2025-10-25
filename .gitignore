@@ -27,3 +27,9 @@ dist-ssr
 .amplify
 amplify_outputs*
 amplifyconfiguration*
+
+
+# repo dump 
+repo_dump.txt
+
+memory-bank/

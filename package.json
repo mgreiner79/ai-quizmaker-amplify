@@ -12,7 +12,8 @@
     "test:functions": "vitest --project functions",
     "test:frontend": "vitest --project frontend",
     "test:watch": "vitest --watch",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "dump:repo": "tsx scripts/dump_repo.ts -o repo_dump.txt --root ."
   },
   "dependencies": {
     "@aws-amplify/ui-react": "^6.5.5",
