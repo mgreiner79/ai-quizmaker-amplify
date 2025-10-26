@@ -35,7 +35,7 @@ const CreateQuiz: React.FC = () => {
   const { start, submitted, loading, error, message } = useQuizCreation(
     quizId,
     () => {
-      navigate(`/edit/${quizId}`);
+      navigate(`/edit/${quizId}?new=1`, { state: { fromCreate: true } });
     },
   );
 

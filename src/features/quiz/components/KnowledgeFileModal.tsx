@@ -20,6 +20,8 @@ interface KnowledgeFileModalProps {
   onSelect: (fileKey: string) => void;
 }
 
+type ListedItem = { key: string };
+
 const KnowledgeFileModal: React.FC<KnowledgeFileModalProps> = ({
   open,
   onClose,
@@ -33,21 +35,31 @@ const KnowledgeFileModal: React.FC<KnowledgeFileModalProps> = ({
 
   // Fetch the list of files when the modal opens
   useEffect(() => {
-    if (open && user?.userId) {
-      list({
-        path: `knowledge/${user.userId}/`,
-      })
-        .then((result) => {
-          console.log('Files:', result);
-          setFiles(result.items.map((item: any) => ({ key: item.path })) || []);
-        })
-        .catch((err) => console.error('Error listing files: ', err));
-    }
+    let cancelled = false;
+    const run = async () => {
+      if (!(open && user?.userId)) return;
+      try {
+        const result = await list({ path: `knowledge/${user.userId}/` });
+        if (cancelled) return;
+        const items =
+          result.items?.map((item: any) => ({ key: item.path as string })) ??
+          [];
+        setFiles(items);
+      } catch (err) {
+        // Keep silent here; higher-level UX handles errors elsewhere
+        console.error('Error listing files: ', err);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [open, user]);
 
-  // Handle dropdown change
-  const handleSelectChange = (event: any) => {
-    setSelectedFile(event.target.value);
+  const handleSelectChange = (
+    event: React.ChangeEvent<{ value: unknown }> | any,
+  ) => {
+    setSelectedFile(String(event.target.value));
   };
 
   // Trigger file input when "Upload New File" is clicked
@@ -60,34 +72,39 @@ const KnowledgeFileModal: React.FC<KnowledgeFileModalProps> = ({
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-    if (file && user?.userId) {
-      setUploading(true);
-      try {
-        // Convert the file to an ArrayBuffer (you can also use file.arrayBuffer())
-        const arrayBuffer = await file.arrayBuffer();
-        // Upload the file
-        const uploadResult = uploadData({
-          data: arrayBuffer,
-          path: `knowledge/${user.userId}/${file.name}`,
-        });
-        // Depending on your API, the uploaded file's key might be here:
-        const result = await uploadResult.result;
-        const newFileKey = result.path;
-        // Update the file list and select the new file
-        setFiles((prev) => [...prev, { key: newFileKey }]);
-        setSelectedFile(newFileKey);
-        onSelect(newFileKey);
-      } catch (err) {
-        console.error('Error uploading file: ', err);
-      } finally {
-        setUploading(false);
-      }
+    if (!file || !user?.userId) return;
+
+    setUploading(true);
+    try {
+      const uploadTask = uploadData({
+        data: file, // <— direct File upload
+        path: `knowledge/${user.userId}/${file.name}`,
+        options: {
+          // optional but useful
+          contentType: file.type || 'application/octet-stream',
+          // onProgress: ({ transferredBytes, totalBytes }) => { ... } // if we later add a progress bar
+        },
+      });
+
+      const result = await uploadTask.result;
+      const newFileKey = result.path;
+
+      // Update the list and selection
+      setFiles((prev) => [...prev, { key: newFileKey }]);
+      setSelectedFile(newFileKey);
+      onSelect(newFileKey);
+    } catch (err) {
+      console.error('Error uploading file: ', err);
+    } finally {
+      setUploading(false);
+      // clear the input so selecting the same file again will re-trigger change
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   // When the user confirms their selection
   const handleConfirm = () => {
-    onSelect(selectedFile);
+    if (selectedFile) onSelect(selectedFile);
     onClose();
   };
 
@@ -144,11 +161,11 @@ const KnowledgeFileModal: React.FC<KnowledgeFileModalProps> = ({
         <Button
           onClick={handleConfirm}
           color="primary"
-          disabled={!selectedFile}
+          disabled={!selectedFile || uploading}
         >
           OK
         </Button>
-        <Button onClick={onClose} color="secondary">
+        <Button onClick={onClose} color="secondary" disabled={uploading}>
           Cancel
         </Button>
       </DialogActions>

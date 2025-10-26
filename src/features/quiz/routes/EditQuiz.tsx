@@ -14,7 +14,7 @@ import {
   Grid2,
 } from '@mui/material';
 
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import { useQuiz } from '@/features/quiz/hooks/useQuiz';
 import { useUpdateQuiz } from '@/features/quiz/hooks/useUpdateQuiz';
@@ -29,6 +29,12 @@ import { toQuizDraft } from '@/features/quiz/types';
 const EditQuiz: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Derive "fromCreate" from either router state OR ?new=1
+  const search = new URLSearchParams(location.search);
+  const fromCreate =
+    (location.state as any)?.fromCreate === true || search.get('new') === '1';
 
   const { quiz, loading, error, refetch } = useQuiz(quizId);
   const { save, saving, error: saveError } = useUpdateQuiz();
@@ -57,6 +63,12 @@ const EditQuiz: React.FC = () => {
   }, [quiz, dirty]);
 
   const disabled = loading || saving || !draft;
+
+  // Button logic:
+  // - From creation: Save is enabled even if not dirty
+  // - From edit: Save requires dirty
+  const showCancel = !fromCreate;
+  const canSave = !!draft && !saving && (fromCreate || dirty);
 
   const handleQuizChange = <K extends keyof QuizDraft>(
     field: K,
@@ -344,21 +356,23 @@ const EditQuiz: React.FC = () => {
       </Box>
 
       <Box mt={4} display="flex" justifyContent="flex-end">
-        <Button
-          variant="outlined"
-          onClick={() => navigate('/')}
-          disabled={saving}
-        >
-          Cancel
-        </Button>
+        {showCancel && (
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/')}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+        )}
         <Button
           variant="contained"
           color="primary"
           onClick={handleSave}
-          disabled={saving || !dirty}
-          sx={{ ml: 2 }}
+          disabled={!canSave}
+          sx={{ ml: showCancel ? 2 : 0 }}
         >
-          {saving ? 'Saving...' : 'Save Changes'}
+          {saving ? 'Saving...' : 'Save'}
         </Button>
       </Box>
 
