@@ -117,9 +117,12 @@ const EditQuiz: React.FC = () => {
     try {
       await save(draft as Quiz);
       setDirty(false);
-      showSnack('Saved changes', 'success');
-      // Navigate back after a short delay so the user sees the toast
-      setTimeout(() => navigate('/'), 300);
+      navigate('/', {
+        state: {
+          toast: { message: 'Quiz saved', severity: 'success' as const },
+        },
+        replace: true, // optional: prevents back-stack with the toast state
+      });
     } catch (e) {
       showSnack('Failed to save changes', 'error');
     }

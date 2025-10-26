@@ -1,5 +1,5 @@
 // src/features/quiz/routes/Home.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -21,7 +21,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import { useQuizzes, type Quiz } from '@/features/quiz/hooks/useQuizzes';
 import { deleteQuiz } from '@/features/quiz/api/quizzes';
@@ -37,6 +37,7 @@ const Home: React.FC = () => {
   >('info');
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const showSnack = (
     msg: string,
@@ -46,6 +47,20 @@ const Home: React.FC = () => {
     setSnackSeverity(severity);
     setSnackOpen(true);
   };
+
+  // 🔔 Flash message from navigation (e.g., after saving in EditQuiz)
+  useEffect(() => {
+    const toast = (location.state as any)?.toast as
+      | { message: string; severity?: 'success' | 'error' | 'info' | 'warning' }
+      | undefined;
+
+    if (toast?.message) {
+      showSnack(toast.message, toast.severity ?? 'info');
+
+      // Clear the state so refresh/back doesn't replay it
+      navigate('.', { replace: true, state: {} });
+    }
+  }, [location.state, navigate]);
 
   const handleDelete = async (quizId: string) => {
     try {
