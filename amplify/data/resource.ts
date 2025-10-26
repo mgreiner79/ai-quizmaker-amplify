@@ -1,6 +1,7 @@
 // amplify/data/resource.ts
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-import { quizGenerator } from '../functions/quizGenerator/resource';
+import { quizEnqueue } from '../functions/quizEnqueue/resource';
+import { quizWorker } from '../functions/quizWorker/resource';
 
 const schema = a
   .schema({
@@ -12,8 +13,8 @@ const schema = a
         numQuestions: a.integer().required(),
         quizId: a.string(),
       })
-      .returns(a.ref('Quiz'))
-      .handler(a.handler.function(quizGenerator))
+      .returns(a.ref('CreationProgress'))
+      .handler(a.handler.function(quizEnqueue))
       .authorization((allow) => [allow.authenticated()]),
 
     Answer: a.customType({
@@ -84,7 +85,8 @@ const schema = a
       ]),
   })
   .authorization((allow) => [
-    allow.resource(quizGenerator).to(['query', 'mutate']),
+    allow.resource(quizEnqueue).to(['mutate', 'query']),
+    allow.resource(quizWorker).to(['query', 'mutate']),
   ]);
 
 export type Schema = ClientSchema<typeof schema>;

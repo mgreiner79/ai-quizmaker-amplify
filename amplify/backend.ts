@@ -1,23 +1,47 @@
 // amplify/backend.ts
-
+import * as cdk from 'aws-cdk-lib';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { storage } from './storage/resource';
-import { quizGenerator } from './functions/quizGenerator/resource';
+import { quizEnqueue } from './functions/quizEnqueue/resource';
+import { quizWorker } from './functions/quizWorker/resource';
+
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 const backend = defineBackend({
   auth,
   data,
-  quizGenerator,
+  quizEnqueue,
+  quizWorker,
   storage,
 });
 
-backend.quizGenerator.addEnvironment(
+const dlq = new sqs.Queue(backend.stack, 'QuizDLQ', {
+  retentionPeriod: cdk.Duration.days(7),
+});
+
+const queue = new sqs.Queue(backend.stack, 'QuizGenQueue', {
+  visibilityTimeout: cdk.Duration.minutes(15),
+  deadLetterQueue: { queue: dlq, maxReceiveCount: 3 },
+});
+
+// enqueue → send permissions + env
+queue.grantSendMessages(backend.quizEnqueue.resources.lambda);
+backend.quizEnqueue.addEnvironment('QUEUE_URL', queue.queueUrl);
+
+// worker ← SQS event source + S3 read
+backend.quizWorker.resources.lambda.addEventSource(
+  new SqsEventSource(queue, { batchSize: 1 }),
+);
+backend.storage.resources.bucket.grantRead(backend.quizWorker.resources.lambda);
+
+backend.quizWorker.addEnvironment(
   'BUCKET_NAME',
   backend.storage.resources.bucket.bucketName,
 );
-backend.quizGenerator.addEnvironment(
+backend.quizWorker.addEnvironment(
   'BUCKET_REGION',
   backend.storage.stack.region,
 );
