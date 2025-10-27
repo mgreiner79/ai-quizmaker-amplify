@@ -42,7 +42,7 @@ export default defineConfig({
         test: {
           name: 'functions',
           environment: 'node',
-          setupFiles: ['amplify/functions/quizGenerator/__tests__/_setup.ts'],
+          setupFiles: ['amplify/functions/quizWorker/__tests__/_setup.ts'],
           include: ['amplify/functions/**/__tests__/**/*.test.ts'],
           globals: true,
           css: false,

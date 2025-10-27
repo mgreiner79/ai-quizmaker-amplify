@@ -1,8 +1,10 @@
+// amplify/functions/quizEnqueue/handler.ts
 import { Amplify } from 'aws-amplify';
-import { generateClient, get } from 'aws-amplify/data';
+import { generateClient } from 'aws-amplify/data';
 import { Schema } from '../../data/resource';
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
 import { env } from '$amplify/env/quiz-enqueue';
+import { upsertProgress, ProgressStatus } from '../_shared/progress';
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
   env,
@@ -44,11 +46,9 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
   }
 
   const client = generateClient<Schema>({ authMode: 'iam' });
-  const progress = await client.models.CreationProgress.create({
-    id: quizId,
-    status: 'WARMING_UP',
-    message: 'Warming up',
-    errorText: '',
+  const progress = await upsertProgress(client, quizId, {
+    status: ProgressStatus.QUEUED,
+    message: 'Task queued',
   });
 
   // Send message to SQS
@@ -66,5 +66,5 @@ export const handler: Schema['quizGenerator']['functionHandler'] = async (
     MessageBody: JSON.stringify(body),
   });
   await sqsClient.send(sendCommand);
-  return progress.data;
+  return progress;
 };

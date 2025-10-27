@@ -59,6 +59,7 @@ export function useQuizCreation(quizId: string, onCreated?: () => void) {
       } catch (error) {
         setSubmitted(false);
         setError(error instanceof Error ? error : new Error('Unknown error'));
+        console.log('Subscription error:', error);
       } finally {
         setLoading(false);
       }

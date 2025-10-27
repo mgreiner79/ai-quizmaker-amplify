@@ -23,6 +23,11 @@ const schema = a
       message: a.string().required(),
     }),
 
+    quizWorker: a
+      .mutation()
+      .handler(a.handler.function(quizWorker).async())
+      .authorization((allow) => [allow.groups(['Admins'])]),
+
     Question: a.customType({
       id: a.id().required(),
       text: a.string().required(),
@@ -57,6 +62,7 @@ const schema = a
       .model({
         id: a.id().required(),
         status: a.enum([
+          'QUEUED',
           'WARMING_UP',
           'EXTRACTING',
           'GENERATING',

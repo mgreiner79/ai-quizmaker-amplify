@@ -1,4 +1,5 @@
 // amplify/backend.ts
+
 import * as cdk from 'aws-cdk-lib';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { defineBackend } from '@aws-amplify/backend';
@@ -24,6 +25,7 @@ const dlq = new sqs.Queue(backend.stack, 'QuizDLQ', {
 
 const queue = new sqs.Queue(backend.stack, 'QuizGenQueue', {
   visibilityTimeout: cdk.Duration.minutes(15),
+  retentionPeriod: cdk.Duration.minutes(30),
   deadLetterQueue: { queue: dlq, maxReceiveCount: 3 },
 });
 
@@ -37,6 +39,12 @@ backend.quizWorker.resources.lambda.addEventSource(
 );
 backend.storage.resources.bucket.grantRead(backend.quizWorker.resources.lambda);
 
+// This is needed because this lambda is not included in the data resource.
+backend.quizWorker.addEnvironment(
+  'AMPLIFY_DATA_GRAPHQL_ENDPOINT',
+  backend.data.graphqlUrl,
+);
+
 backend.quizWorker.addEnvironment(
   'BUCKET_NAME',
   backend.storage.resources.bucket.bucketName,
@@ -45,3 +53,5 @@ backend.quizWorker.addEnvironment(
   'BUCKET_REGION',
   backend.storage.stack.region,
 );
+
+backend.storage.resources.bucket.grantRead(backend.quizWorker.resources.lambda);

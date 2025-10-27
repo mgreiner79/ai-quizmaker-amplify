@@ -1,3 +1,5 @@
+// amplify/functions/quizEnqueue/resource.ts
+
 import { defineFunction } from '@aws-amplify/backend';
 
 export const quizEnqueue = defineFunction({
@@ -5,4 +7,5 @@ export const quizEnqueue = defineFunction({
   entry: './handler.ts',
   timeoutSeconds: 30,
   memoryMB: 256,
+  resourceGroupName: 'data',
 });
